@@ -1,4 +1,5 @@
 use crate::{BaseClass, Interface, SubClass};
+use core::convert::TryFrom;
 
 /// Combines the Base Class and the Sub-class of a device to classify it into a `DeviceType`. Combined with the
 /// device's Interface, this can be enough to know how to drive the device.
@@ -304,6 +305,32 @@ impl From<(BaseClass, SubClass)> for DeviceType {
             (0x11, 0x80) => DeviceType::OtherSignalProcessingController,
 
             _ => DeviceType::Unknown,
+        }
+    }
+}
+
+/// The different register-level programming interfaces defined for USB controllers (devices of type
+/// `DeviceType::UsbController`).
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum UsbType {
+    Uhci,
+    Ohci,
+    Ehci,
+    OtherInterface,
+    Device,
+}
+
+impl TryFrom<Interface> for UsbType {
+    type Error = ();
+
+    fn try_from(interface: Interface) -> Result<Self, Self::Error> {
+        match interface {
+            0x00 => Ok(UsbType::Uhci),
+            0x10 => Ok(UsbType::Ohci),
+            0x20 => Ok(UsbType::Ehci),
+            0x80 => Ok(UsbType::OtherInterface),
+            0xfe => Ok(UsbType::Device),
+            _ => Err(()),
         }
     }
 }
