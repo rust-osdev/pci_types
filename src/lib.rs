@@ -1,5 +1,7 @@
 #![no_std]
 
+pub mod device_type;
+
 use bit_field::BitField;
 use core::{fmt, marker::PhantomData};
 
