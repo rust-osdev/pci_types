@@ -7,10 +7,12 @@ use core::{fmt, marker::PhantomData};
 
 /// PCIe supports 65536 segments, each with 256 buses, each with 32 slots, each with 8 possible functions. We cram this into a `u32`:
 ///
+/// ```ignore
 /// 32                              16               8         3      0
 ///  +-------------------------------+---------------+---------+------+
 ///  |            segment            |      bus      | device  | func |
 ///  +-------------------------------+---------------+---------+------+
+/// ```
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
 pub struct PciAddress(u32);
 
@@ -43,7 +45,14 @@ impl PciAddress {
 
 impl fmt::Display for PciAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:02x}-{:02x}:{:02x}.{}", self.segment(), self.bus(), self.device(), self.function())
+        write!(
+            f,
+            "{:02x}-{:02x}:{:02x}.{}",
+            self.segment(),
+            self.bus(),
+            self.device(),
+            self.function()
+        )
     }
 }
 
@@ -156,7 +165,10 @@ where
         unsafe { access.read(self.0, 0x0c) }.get_bit(23)
     }
 
-    pub fn revision_and_class(&self, access: &A) -> (DeviceRevision, BaseClass, SubClass, Interface) {
+    pub fn revision_and_class(
+        &self,
+        access: &A,
+    ) -> (DeviceRevision, BaseClass, SubClass, Interface) {
         let field = unsafe { access.read(self.0, 0x08) };
         (
             field.get_bits(0..8) as DeviceRevision,
