@@ -316,6 +316,7 @@ pub enum UsbType {
     Uhci,
     Ohci,
     Ehci,
+    Xhci,
     OtherInterface,
     Device,
 }
@@ -328,6 +329,7 @@ impl TryFrom<Interface> for UsbType {
             0x00 => Ok(UsbType::Uhci),
             0x10 => Ok(UsbType::Ohci),
             0x20 => Ok(UsbType::Ehci),
+            0x30 => Ok(UsbType::Xhci),
             0x80 => Ok(UsbType::OtherInterface),
             0xfe => Ok(UsbType::Device),
             _ => Err(()),
