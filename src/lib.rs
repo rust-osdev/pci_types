@@ -45,14 +45,7 @@ impl PciAddress {
 
 impl fmt::Display for PciAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{:02x}-{:02x}:{:02x}.{}",
-            self.segment(),
-            self.bus(),
-            self.device(),
-            self.function()
-        )
+        write!(f, "{:02x}-{:02x}:{:02x}.{}", self.segment(), self.bus(), self.device(), self.function())
     }
 }
 
@@ -133,24 +126,19 @@ pub trait ConfigRegionAccess: Send {
 ///     |              |              |   line       |   line       |
 ///     +--------------+--------------+--------------+--------------+
 /// ```
-pub struct PciHeader<A>(PciAddress, PhantomData<A>)
-where
-    A: ConfigRegionAccess;
+pub struct PciHeader(PciAddress);
 
-impl<A> PciHeader<A>
-where
-    A: ConfigRegionAccess,
-{
-    pub fn new(address: PciAddress) -> PciHeader<A> {
-        PciHeader(address, PhantomData)
+impl PciHeader {
+    pub fn new(address: PciAddress) -> PciHeader {
+        PciHeader(address)
     }
 
-    pub fn id(&self, access: &A) -> (VendorId, DeviceId) {
+    pub fn id(&self, access: &impl ConfigRegionAccess) -> (VendorId, DeviceId) {
         let id = unsafe { access.read(self.0, 0x00) };
         (id.get_bits(0..16) as u16, id.get_bits(16..32) as u16)
     }
 
-    pub fn header_type(&self, access: &A) -> u8 {
+    pub fn header_type(&self, access: &impl ConfigRegionAccess) -> u8 {
         /*
          * Read bits 0..=6 of the Header Type. Bit 7 dictates whether the device has multiple functions and so
          * isn't read here.
@@ -158,7 +146,7 @@ where
         unsafe { access.read(self.0, 0x0c) }.get_bits(16..23) as u8
     }
 
-    pub fn has_multiple_functions(&self, access: &A) -> bool {
+    pub fn has_multiple_functions(&self, access: &impl ConfigRegionAccess) -> bool {
         /*
          * Reads bit 7 of the Header Type, which is 1 if the device has multiple functions.
          */
@@ -167,7 +155,7 @@ where
 
     pub fn revision_and_class(
         &self,
-        access: &A,
+        access: &impl ConfigRegionAccess,
     ) -> (DeviceRevision, BaseClass, SubClass, Interface) {
         let field = unsafe { access.read(self.0, 0x08) };
         (
