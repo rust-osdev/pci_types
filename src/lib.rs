@@ -55,6 +55,7 @@ pub type DeviceRevision = u8;
 pub type BaseClass = u8;
 pub type SubClass = u8;
 pub type Interface = u8;
+pub type HeaderType = u8;
 
 // TODO: documentation
 pub trait ConfigRegionAccess: Send {
@@ -62,6 +63,10 @@ pub trait ConfigRegionAccess: Send {
     unsafe fn read(&self, address: PciAddress, offset: u16) -> u32;
     unsafe fn write(&self, address: PciAddress, offset: u16, value: u32);
 }
+
+pub const HEADER_TYPE_ENDPOINT: HeaderType = 0x00;
+pub const HEADER_TYPE_PCI_PCI_BRIDGE: HeaderType = 0x01;
+pub const HEADER_TYPE_CARDBUS_BRIDGE: HeaderType = 0x02;
 
 /// Every PCI configuration region starts with a header made up of two parts:
 ///    - a predefined region that identify the function (bytes `0x00..0x10`)
@@ -93,15 +98,15 @@ impl PciHeader {
 
     pub fn id(&self, access: &impl ConfigRegionAccess) -> (VendorId, DeviceId) {
         let id = unsafe { access.read(self.0, 0x00) };
-        (id.get_bits(0..16) as u16, id.get_bits(16..32) as u16)
+        (id.get_bits(0..16) as VendorId, id.get_bits(16..32) as DeviceId)
     }
 
-    pub fn header_type(&self, access: &impl ConfigRegionAccess) -> u8 {
+    pub fn header_type(&self, access: &impl ConfigRegionAccess) -> HeaderType {
         /*
          * Read bits 0..=6 of the Header Type. Bit 7 dictates whether the device has multiple functions and so
          * isn't returned here.
          */
-        unsafe { access.read(self.0, 0x0c) }.get_bits(16..23) as u8
+        unsafe { access.read(self.0, 0x0c) }.get_bits(16..23) as HeaderType
     }
 
     pub fn has_multiple_functions(&self, access: &impl ConfigRegionAccess) -> bool {
