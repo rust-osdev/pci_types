@@ -184,4 +184,63 @@ impl EndpointHeader {
     pub fn header(&self) -> PciHeader {
         PciHeader(self.0)
     }
+
+    /// Get the contents of a BAR in a given slot. Empty bars will return `None`.
+    ///
+    /// ### Note
+    /// 64-bit memory BARs use two slots, so if one is decoded in e.g. slot #0, this method should not be called
+    /// for slot #1
+    pub fn bar(&self, slot: u8, access: &impl ConfigRegionAccess) -> Option<Bar> {
+        let offset = 0x10 + (slot as u16) * 4;
+        let bar = unsafe { access.read(self.0, offset) };
+
+        /*
+         * If bit 0 is `0`, the BAR is in memory. If it's `1`, it's in I/O.
+         */
+        if bar.get_bit(0) == false {
+            let prefetchable = bar.get_bit(3);
+            let address = bar.get_bits(4..32) << 4;
+
+            // TODO: if the bar is 64-bits, do we need to do this on both BARs?
+            let size = unsafe {
+                access.write(self.0, offset, 0xffffffff);
+                let mut readback = access.read(self.0, offset);
+                access.write(self.0, offset, address);
+
+                /*
+                 * If the entire readback value is zero, the BAR is not implemented, so we return `None`.
+                 */
+                if readback == 0x0 {
+                    return None;
+                }
+
+                readback.set_bits(0..4, 0);
+                1 << readback.trailing_zeros()
+            };
+
+            match bar.get_bits(1..3) {
+                0b00 => Some(Bar::Memory32 { address, size, prefetchable }),
+                0b10 => {
+                    let address = {
+                        let mut address = address as u64;
+                        // TODO: do we need to mask off the lower bits on this?
+                        address.set_bits(32..64, unsafe { access.read(self.0, offset + 4) } as u64);
+                        address
+                    };
+                    Some(Bar::Memory64 { address, size: size as u64, prefetchable })
+                }
+                // TODO: should we bother to return an error here?
+                _ => panic!("BAR Memory type is reserved!"),
+            }
+        } else {
+            Some(Bar::Io { port: bar.get_bits(2..32) })
+        }
+    }
+}
+
+#[derive(Clone, Copy, Debug)]
+pub enum Bar {
+    Memory32 { address: u32, size: u32, prefetchable: bool },
+    Memory64 { address: u64, size: u64, prefetchable: bool },
+    Io { port: u32 },
 }
