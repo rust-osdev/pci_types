@@ -84,10 +84,55 @@ pub trait ConfigRegionAccess: Send {
 ///      |              |     type     |     timer     |    size      |
 ///      +--------------+--------------+---------------+--------------+
 /// ```
-///
+pub struct PciHeader(PciAddress);
+
+impl PciHeader {
+    pub fn new(address: PciAddress) -> PciHeader {
+        PciHeader(address)
+    }
+
+    pub fn id(&self, access: &impl ConfigRegionAccess) -> (VendorId, DeviceId) {
+        let id = unsafe { access.read(self.0, 0x00) };
+        (id.get_bits(0..16) as u16, id.get_bits(16..32) as u16)
+    }
+
+    pub fn header_type(&self, access: &impl ConfigRegionAccess) -> u8 {
+        /*
+         * Read bits 0..=6 of the Header Type. Bit 7 dictates whether the device has multiple functions and so
+         * isn't returned here.
+         */
+        unsafe { access.read(self.0, 0x0c) }.get_bits(16..23) as u8
+    }
+
+    pub fn has_multiple_functions(&self, access: &impl ConfigRegionAccess) -> bool {
+        /*
+         * Reads bit 7 of the Header Type, which is 1 if the device has multiple functions.
+         */
+        unsafe { access.read(self.0, 0x0c) }.get_bit(23)
+    }
+
+    pub fn revision_and_class(
+        &self,
+        access: &impl ConfigRegionAccess,
+    ) -> (DeviceRevision, BaseClass, SubClass, Interface) {
+        let field = unsafe { access.read(self.0, 0x08) };
+        (
+            field.get_bits(0..8) as DeviceRevision,
+            field.get_bits(24..32) as BaseClass,
+            field.get_bits(16..24) as SubClass,
+            field.get_bits(8..16) as Interface,
+        )
+    }
+}
+
 /// Endpoints have a Type-0 header, so the remainder of the header is of the form:
 /// ```ignore
 ///     32                           16                              0
+///     +-----------------------------------------------------------+ 0x00
+///     |                                                           |
+///     |                Predefined region of header                |
+///     |                                                           |
+///     |                                                           |
 ///     +-----------------------------------------------------------+
 ///     |                  Base Address Register 0                  | 0x10
 ///     |                                                           |
@@ -126,43 +171,17 @@ pub trait ConfigRegionAccess: Send {
 ///     |              |              |   line       |   line       |
 ///     +--------------+--------------+--------------+--------------+
 /// ```
-pub struct PciHeader(PciAddress);
+pub struct EndpointHeader(PciAddress);
 
-impl PciHeader {
-    pub fn new(address: PciAddress) -> PciHeader {
-        PciHeader(address)
+impl EndpointHeader {
+    pub fn from_header(header: PciHeader, access: &impl ConfigRegionAccess) -> Option<EndpointHeader> {
+        match header.header_type(access) {
+            0x00 => Some(EndpointHeader(header.0)),
+            _ => None,
+        }
     }
 
-    pub fn id(&self, access: &impl ConfigRegionAccess) -> (VendorId, DeviceId) {
-        let id = unsafe { access.read(self.0, 0x00) };
-        (id.get_bits(0..16) as u16, id.get_bits(16..32) as u16)
-    }
-
-    pub fn header_type(&self, access: &impl ConfigRegionAccess) -> u8 {
-        /*
-         * Read bits 0..=6 of the Header Type. Bit 7 dictates whether the device has multiple functions and so
-         * isn't read here.
-         */
-        unsafe { access.read(self.0, 0x0c) }.get_bits(16..23) as u8
-    }
-
-    pub fn has_multiple_functions(&self, access: &impl ConfigRegionAccess) -> bool {
-        /*
-         * Reads bit 7 of the Header Type, which is 1 if the device has multiple functions.
-         */
-        unsafe { access.read(self.0, 0x0c) }.get_bit(23)
-    }
-
-    pub fn revision_and_class(
-        &self,
-        access: &impl ConfigRegionAccess,
-    ) -> (DeviceRevision, BaseClass, SubClass, Interface) {
-        let field = unsafe { access.read(self.0, 0x08) };
-        (
-            field.get_bits(0..8) as DeviceRevision,
-            field.get_bits(24..32) as BaseClass,
-            field.get_bits(16..24) as SubClass,
-            field.get_bits(8..16) as Interface,
-        )
+    pub fn header(&self) -> PciHeader {
+        PciHeader(self.0)
     }
 }
