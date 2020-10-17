@@ -238,6 +238,8 @@ impl EndpointHeader {
     }
 }
 
+pub const MAX_BARS: usize = 6;
+
 #[derive(Clone, Copy, Debug)]
 pub enum Bar {
     Memory32 { address: u32, size: u32, prefetchable: bool },
