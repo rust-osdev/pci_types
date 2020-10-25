@@ -3,7 +3,7 @@
 pub mod device_type;
 
 use bit_field::BitField;
-use core::{fmt, marker::PhantomData};
+use core::fmt;
 
 /// PCIe supports 65536 segments, each with 256 buses, each with 32 slots, each with 8 possible functions. We cram this into a `u32`:
 ///
