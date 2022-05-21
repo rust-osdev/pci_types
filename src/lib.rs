@@ -209,13 +209,17 @@ impl EndpointHeader {
         }
     }
 
+    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+        let data = unsafe { access.read(self.0, 0x4).get_bits(16..32) };
+        StatusRegister::new(data as u16)
+    }
+
     pub fn header(&self) -> PciHeader {
         PciHeader(self.0)
     }
 
     pub fn capability_pointer(&self, access: &impl ConfigRegionAccess) -> u16 {
-        let data = unsafe { access.read(self.0, 0x4).get_bits(16..32) };
-        let status = StatusRegister::new(data as u16);
+        let status = self.status(access);
         if status.has_capability_list() {
             unsafe { access.read(self.0, 0x34).get_bits(0..8) as u16 }
         } else {
