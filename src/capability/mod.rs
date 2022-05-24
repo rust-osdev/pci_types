@@ -61,14 +61,14 @@ pub enum PciCapability {
 }
 
 impl PciCapability {
-    fn parse(id: u8, address: PciCapabilityAddress, control: u16) -> Option<PciCapability> {
+    fn parse(id: u8, address: PciCapabilityAddress, extension: u16) -> Option<PciCapability> {
         match id {
             0x00 => None, // null capability
             0x01 => Some(PciCapability::PowerManagement(address)),
             0x02 => Some(PciCapability::AcceleratedGraphicsPort(address)),
             0x03 => Some(PciCapability::VitalProductData(address)),
             0x04 => Some(PciCapability::SlotIdentification(address)),
-            0x05 => Some(PciCapability::Msi(MsiCapability::new(address, control))),
+            0x05 => Some(PciCapability::Msi(MsiCapability::new(address, extension))),
             0x06 => Some(PciCapability::CompactPCIHotswap(address)),
             0x07 => Some(PciCapability::PciX(address)),
             0x08 => Some(PciCapability::HyperTransport(address)),
@@ -116,14 +116,14 @@ impl<'a, T: ConfigRegionAccess> Iterator for CapabilityIterator<'a, T> {
             let data = unsafe { self.access.read(self.address, self.offset) };
             let next_ptr = data.get_bits(8..16);
             let id = data.get_bits(0..8);
-            let control = data.get_bits(16..32) as u16;
+            let extension = data.get_bits(16..32) as u16;
             let cap = PciCapability::parse(
                 id as u8,
                 PciCapabilityAddress {
                     address: self.address,
                     offset: self.offset,
                 },
-                control,
+                extension,
             );
             self.offset = next_ptr as u16;
             if let Some(cap) = cap {

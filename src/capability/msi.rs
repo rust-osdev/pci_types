@@ -2,7 +2,7 @@ use crate::{capability::PciCapabilityAddress, ConfigRegionAccess};
 use bit_field::BitField;
 use core::convert::TryFrom;
 
-/// Specifies, how much MSI interrupts one device can have.
+/// Specifies how many MSI interrupts one device can have.
 /// Device will modify lower bits of interrupt vector to send multiple messages, so interrupt block
 /// must be aligned accordingly.
 #[derive(Debug, Copy, Clone, Ord, PartialOrd, Eq, PartialEq)]
@@ -77,7 +77,7 @@ impl MsiCapability {
         self.is_64bit
     }
 
-    /// How much interrupts this device has?
+    /// How many interrupts this device has?
     #[inline]
     pub fn get_multiple_message_capable(&self) -> MultipleMessageSupport {
         self.multiple_message_capable
@@ -96,7 +96,7 @@ impl MsiCapability {
         unsafe { access.write(self.address.address, self.address.offset, reg) };
     }
 
-    /// Set how much interrupts the device will use. If requested count is bigger than supported count,
+    /// Set how many interrupts the device will use. If requested count is bigger than supported count,
     /// the second will be used.
     pub fn set_multiple_message_enable(
         &self,
@@ -108,7 +108,7 @@ impl MsiCapability {
         unsafe { access.write(self.address.address, self.address.offset, reg) };
     }
 
-    /// Return how much interrupts the device is using
+    /// Return how many interrupts the device is using
     pub fn get_multiple_message_enable(
         &self,
         access: &impl ConfigRegionAccess,
