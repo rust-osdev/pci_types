@@ -1,7 +1,12 @@
 #![no_std]
 
+pub mod capability;
 pub mod device_type;
+mod register;
 
+pub use register::{DevselTiming, StatusRegister};
+
+use crate::capability::CapabilityIterator;
 use bit_field::BitField;
 use core::fmt;
 
@@ -45,7 +50,14 @@ impl PciAddress {
 
 impl fmt::Display for PciAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:02x}-{:02x}:{:02x}.{}", self.segment(), self.bus(), self.device(), self.function())
+        write!(
+            f,
+            "{:02x}-{:02x}:{:02x}.{}",
+            self.segment(),
+            self.bus(),
+            self.device(),
+            self.function()
+        )
     }
 }
 
@@ -98,7 +110,10 @@ impl PciHeader {
 
     pub fn id(&self, access: &impl ConfigRegionAccess) -> (VendorId, DeviceId) {
         let id = unsafe { access.read(self.0, 0x00) };
-        (id.get_bits(0..16) as VendorId, id.get_bits(16..32) as DeviceId)
+        (
+            id.get_bits(0..16) as VendorId,
+            id.get_bits(16..32) as DeviceId,
+        )
     }
 
     pub fn header_type(&self, access: &impl ConfigRegionAccess) -> HeaderType {
@@ -127,6 +142,11 @@ impl PciHeader {
             field.get_bits(16..24) as SubClass,
             field.get_bits(8..16) as Interface,
         )
+    }
+
+    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+        let data = unsafe { access.read(self.0, 0x4).get_bits(16..32) };
+        StatusRegister::new(data as u16)
     }
 }
 
@@ -179,15 +199,40 @@ impl PciHeader {
 pub struct EndpointHeader(PciAddress);
 
 impl EndpointHeader {
-    pub fn from_header(header: PciHeader, access: &impl ConfigRegionAccess) -> Option<EndpointHeader> {
+    pub fn from_header(
+        header: PciHeader,
+        access: &impl ConfigRegionAccess,
+    ) -> Option<EndpointHeader> {
         match header.header_type(access) {
             0x00 => Some(EndpointHeader(header.0)),
             _ => None,
         }
     }
 
+    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+        let data = unsafe { access.read(self.0, 0x4).get_bits(16..32) };
+        StatusRegister::new(data as u16)
+    }
+
     pub fn header(&self) -> PciHeader {
         PciHeader(self.0)
+    }
+
+    pub fn capability_pointer(&self, access: &impl ConfigRegionAccess) -> u16 {
+        let status = self.status(access);
+        if status.has_capability_list() {
+            unsafe { access.read(self.0, 0x34).get_bits(0..8) as u16 }
+        } else {
+            0
+        }
+    }
+
+    pub fn capabilities<'a, T: ConfigRegionAccess>(
+        &self,
+        access: &'a T,
+    ) -> CapabilityIterator<'a, T> {
+        let pointer = self.capability_pointer(access);
+        CapabilityIterator::new(self.0, pointer, access)
     }
 
     /// Get the contents of a BAR in a given slot. Empty bars will return `None`.
@@ -224,7 +269,11 @@ impl EndpointHeader {
             };
 
             match bar.get_bits(1..3) {
-                0b00 => Some(Bar::Memory32 { address, size, prefetchable }),
+                0b00 => Some(Bar::Memory32 {
+                    address,
+                    size,
+                    prefetchable,
+                }),
                 0b10 => {
                     let address = {
                         let mut address = address as u64;
@@ -232,13 +281,19 @@ impl EndpointHeader {
                         address.set_bits(32..64, unsafe { access.read(self.0, offset + 4) } as u64);
                         address
                     };
-                    Some(Bar::Memory64 { address, size: size as u64, prefetchable })
+                    Some(Bar::Memory64 {
+                        address,
+                        size: size as u64,
+                        prefetchable,
+                    })
                 }
                 // TODO: should we bother to return an error here?
                 _ => panic!("BAR Memory type is reserved!"),
             }
         } else {
-            Some(Bar::Io { port: bar.get_bits(2..32) })
+            Some(Bar::Io {
+                port: bar.get_bits(2..32),
+            })
         }
     }
 }
@@ -247,7 +302,17 @@ pub const MAX_BARS: usize = 6;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Bar {
-    Memory32 { address: u32, size: u32, prefetchable: bool },
-    Memory64 { address: u64, size: u64, prefetchable: bool },
-    Io { port: u32 },
+    Memory32 {
+        address: u32,
+        size: u32,
+        prefetchable: bool,
+    },
+    Memory64 {
+        address: u64,
+        size: u64,
+        prefetchable: bool,
+    },
+    Io {
+        port: u32,
+    },
 }
