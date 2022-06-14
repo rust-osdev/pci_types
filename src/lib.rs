@@ -22,6 +22,13 @@ use core::fmt;
 pub struct PciAddress(u32);
 
 impl PciAddress {
+    const DEV_SHIFT: u32 = 3;
+    const DEV_MASK: u32 = (1 << Self::DEV_SHIFT) - 1;
+    const BUS_SHIFT: u32 = 8;
+    const BUS_MASK: u32 = (1 << Self::BUS_SHIFT) - 1;
+    const SEG_SHIFT: u32 = 16;
+    const SEG_MASK: u32 = (1 << Self::SEG_SHIFT) - 1;
+
     pub fn new(segment: u16, bus: u8, device: u8, function: u8) -> PciAddress {
         let mut result = 0;
         result.set_bits(0..3, function as u32);
@@ -45,6 +52,32 @@ impl PciAddress {
 
     pub fn function(&self) -> u8 {
         self.0.get_bits(0..3) as u8
+    }
+
+    /// Returns the address of the next PCI function or `None` if the next is out of range.
+    pub fn next_function(&self) -> Option<PciAddress> {
+        self.0.checked_add(1).map(PciAddress)
+    }
+
+    /// Returns the address of the first function in the next PCI device or `None` if the next is
+    /// out of range.
+    pub fn next_device(&self) -> Option<PciAddress> {
+        let addr = self.0.checked_add(1 << Self::DEV_SHIFT)? & !Self::DEV_MASK;
+        Some(PciAddress(addr))
+    }
+
+    /// Returns the address of the first function in the next device of the next bus or `None` if
+    /// the next is out of range.
+    pub fn next_bus(&self) -> Option<PciAddress> {
+        let addr = self.0.checked_add(1 << Self::BUS_SHIFT)? & !Self::BUS_MASK;
+        Some(PciAddress(addr))
+    }
+
+    /// Returns the address of the first function in the next segment or `None` if the next is out
+    /// of range.
+    pub fn next_segment(&self) -> Option<PciAddress> {
+        let addr = self.0.checked_add(1 << Self::SEG_SHIFT)? & !Self::SEG_MASK;
+        Some(PciAddress(addr))
     }
 }
 
@@ -321,4 +354,34 @@ pub enum Bar {
     Io {
         port: u32,
     },
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn next_addr() {
+        let a = PciAddress::new(0, 0, 0, 0);
+
+        assert_eq!(Some(PciAddress::new(0, 0, 0, 1)), a.next_function());
+        assert_eq!(Some(PciAddress::new(0, 0, 1, 0)), a.next_device());
+        assert_eq!(Some(PciAddress::new(0, 1, 0, 0)), a.next_bus());
+        assert_eq!(Some(PciAddress::new(1, 0, 0, 0)), a.next_segment());
+
+        // Moving from the last function of one device to the first function on the next.
+        assert_eq!(
+            PciAddress::new(0, 0, 0, 7).next_function(),
+            Some(PciAddress::new(0, 0, 1, 0))
+        );
+
+        // Move to next device from function 2 of the current.
+        assert_eq!(
+            PciAddress::new(0, 0, 1, 2).next_device(),
+            Some(PciAddress::new(0, 0, 2, 0))
+        );
+
+        // None is returned when out of address space.
+        assert!(PciAddress::from(0xffff_ffff).next_function().is_none());
+    }
 }
