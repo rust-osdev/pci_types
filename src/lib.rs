@@ -48,6 +48,12 @@ impl PciAddress {
     }
 }
 
+impl From<u32> for PciAddress {
+    fn from(f: u32) -> Self {
+        PciAddress(f)
+    }
+}
+
 impl fmt::Display for PciAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(
