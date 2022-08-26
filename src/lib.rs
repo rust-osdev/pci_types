@@ -241,6 +241,10 @@ impl EndpointHeader {
     /// 64-bit memory BARs use two slots, so if one is decoded in e.g. slot #0, this method should not be called
     /// for slot #1
     pub fn bar(&self, slot: u8, access: &impl ConfigRegionAccess) -> Option<Bar> {
+        if slot >= 6 {
+            return None;
+        }
+
         let offset = 0x10 + (slot as u16) * 4;
         let bar = unsafe { access.read(self.0, offset) };
 
@@ -251,42 +255,75 @@ impl EndpointHeader {
             let prefetchable = bar.get_bit(3);
             let address = bar.get_bits(4..32) << 4;
 
-            // TODO: if the bar is 64-bits, do we need to do this on both BARs?
-            let size = unsafe {
-                access.write(self.0, offset, 0xffffffff);
-                let mut readback = access.read(self.0, offset);
-                access.write(self.0, offset, address);
+            match bar.get_bits(1..3)
+            {
+                0b00 => {
+                    let size = unsafe {
+                        access.write(self.0, offset, 0xfffffff0);
+                        let mut readback = access.read(self.0, offset).get_bits(4..32);
+                        access.write(self.0, offset, address);
 
-                /*
-                 * If the entire readback value is zero, the BAR is not implemented, so we return `None`.
-                 */
-                if readback == 0x0 {
-                    return None;
-                }
+                        if readback == 0x0 {
+                            return None;
+                        }
 
-                readback.set_bits(0..4, 0);
-                1 << readback.trailing_zeros()
-            };
+                        readback.set_bits(0..4, 0);
+                        1 << readback.trailing_zeros()
+                    };
+                    Some(Bar::Memory32 {
+                        address,
+                        size,
+                        prefetchable,
+                    })
+                },
 
-            match bar.get_bits(1..3) {
-                0b00 => Some(Bar::Memory32 {
-                    address,
-                    size,
-                    prefetchable,
-                }),
                 0b10 => {
+                    /*
+                     * If the BAR is 64 bit-wide and this slot is the last, there is no second slot to read.
+                     */
+                    if slot >= 5 {
+                        return None
+                    }
+
+                    let address_upper = unsafe { access.read(self.0, offset + 4) };
+
+                    let size = unsafe {
+                        access.write(self.0, offset, 0xfffffff0);
+                        access.write(self.0, offset + 4, 0xffffffff);
+                        let mut readback_low = access.read(self.0, offset);
+                        let mut readback_high = access.read(self.0, offset + 4);
+                        access.write(self.0, offset, address);
+                        access.write(self.0, offset + 4, address_upper);
+
+                        /*
+                         * If the readback from the first slot is not 0, the size of the BAR is less than 4GiB.
+                         */
+                        if readback_low != 0
+                        {
+                            /*
+                             * The readback is invalid in these conditions:
+                             */
+                            (1 << readback_low.trailing_zeros()) as u64
+                        }
+                        else
+                        {
+                            (1 << (readback_high.trailing_zeros() + 32)) as u64
+                        }
+                    };
+
                     let address = {
                         let mut address = address as u64;
                         // TODO: do we need to mask off the lower bits on this?
-                        address.set_bits(32..64, unsafe { access.read(self.0, offset + 4) } as u64);
+                        address.set_bits(32..64, address_upper as u64);
                         address
                     };
+
                     Some(Bar::Memory64 {
                         address,
                         size: size as u64,
                         prefetchable,
                     })
-                }
+                },
                 // TODO: should we bother to return an error here?
                 _ => panic!("BAR Memory type is reserved!"),
             }
