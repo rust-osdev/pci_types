@@ -290,8 +290,8 @@ impl EndpointHeader {
                     let size = unsafe {
                         access.write(self.0, offset, 0xfffffff0);
                         access.write(self.0, offset + 4, 0xffffffff);
-                        let mut readback_low = access.read(self.0, offset);
-                        let mut readback_high = access.read(self.0, offset + 4);
+                        let readback_low = access.read(self.0, offset);
+                        let readback_high = access.read(self.0, offset + 4);
                         access.write(self.0, offset, address);
                         access.write(self.0, offset + 4, address_upper);
 
