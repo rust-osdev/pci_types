@@ -255,14 +255,16 @@ impl EndpointHeader {
             let prefetchable = bar.get_bit(3);
             let address = bar.get_bits(4..32) << 4;
 
-            match bar.get_bits(1..3)
-            {
+            match bar.get_bits(1..3) {
                 0b00 => {
                     let size = unsafe {
                         access.write(self.0, offset, 0xfffffff0);
                         let mut readback = access.read(self.0, offset).get_bits(4..32);
                         access.write(self.0, offset, address);
 
+                        /*
+                         * If the entire readback value is zero, the BAR is not implemented, so we return `None`.
+                         */
                         if readback == 0x0 {
                             return None;
                         }
@@ -275,14 +277,14 @@ impl EndpointHeader {
                         size,
                         prefetchable,
                     })
-                },
+                }
 
                 0b10 => {
                     /*
                      * If the BAR is 64 bit-wide and this slot is the last, there is no second slot to read.
                      */
                     if slot >= 5 {
-                        return None
+                        return None;
                     }
 
                     let address_upper = unsafe { access.read(self.0, offset + 4) };
@@ -298,16 +300,10 @@ impl EndpointHeader {
                         /*
                          * If the readback from the first slot is not 0, the size of the BAR is less than 4GiB.
                          */
-                        if readback_low != 0
-                        {
-                            /*
-                             * The readback is invalid in these conditions:
-                             */
+                        if readback_low != 0 {
                             (1 << readback_low.trailing_zeros()) as u64
-                        }
-                        else
-                        {
-                            (1 << (readback_high.trailing_zeros() + 32)) as u64
+                        } else {
+                            1u64 << ((readback_high.trailing_zeros() + 32) as u64)
                         }
                     };
 
@@ -323,7 +319,7 @@ impl EndpointHeader {
                         size: size as u64,
                         prefetchable,
                     })
-                },
+                }
                 // TODO: should we bother to return an error here?
                 _ => panic!("BAR Memory type is reserved!"),
             }
