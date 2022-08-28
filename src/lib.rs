@@ -259,7 +259,7 @@ impl EndpointHeader {
                 0b00 => {
                     let size = unsafe {
                         access.write(self.0, offset, 0xfffffff0);
-                        let mut readback = access.read(self.0, offset).get_bits(4..32);
+                        let mut readback = access.read(self.0, offset);
                         access.write(self.0, offset, address);
 
                         /*
