@@ -67,7 +67,8 @@ pub type DeviceRevision = u8;
 pub type BaseClass = u8;
 pub type SubClass = u8;
 pub type Interface = u8;
-pub type HeaderType = u8;
+pub type SubsystemId = u16;
+pub type SubsystemVendorId = u16;
 
 // TODO: documentation
 pub trait ConfigRegionAccess: Send {
@@ -76,9 +77,13 @@ pub trait ConfigRegionAccess: Send {
     unsafe fn write(&self, address: PciAddress, offset: u16, value: u32);
 }
 
-pub const HEADER_TYPE_ENDPOINT: HeaderType = 0x00;
-pub const HEADER_TYPE_PCI_PCI_BRIDGE: HeaderType = 0x01;
-pub const HEADER_TYPE_CARDBUS_BRIDGE: HeaderType = 0x02;
+#[non_exhaustive]
+pub enum HeaderType {
+    Endpoint,
+    PciPciBridge,
+    CardBusBridge,
+    Unknown(u8),
+}
 
 /// Every PCI configuration region starts with a header made up of two parts:
 ///    - a predefined region that identify the function (bytes `0x00..0x10`)
@@ -121,7 +126,12 @@ impl PciHeader {
          * Read bits 0..=6 of the Header Type. Bit 7 dictates whether the device has multiple functions and so
          * isn't returned here.
          */
-        unsafe { access.read(self.0, 0x0c) }.get_bits(16..23) as HeaderType
+        match unsafe { access.read(self.0, 0x0c) }.get_bits(16..23) {
+            0x00 => HeaderType::Endpoint,
+            0x01 => HeaderType::PciPciBridge,
+            0x02 => HeaderType::CardBusBridge,
+            t => HeaderType::Unknown(t as u8),
+        }
     }
 
     pub fn has_multiple_functions(&self, access: &impl ConfigRegionAccess) -> bool {
@@ -204,7 +214,7 @@ impl EndpointHeader {
         access: &impl ConfigRegionAccess,
     ) -> Option<EndpointHeader> {
         match header.header_type(access) {
-            0x00 => Some(EndpointHeader(header.0)),
+            HeaderType::Endpoint => Some(EndpointHeader(header.0)),
             _ => None,
         }
     }
@@ -233,6 +243,11 @@ impl EndpointHeader {
     ) -> CapabilityIterator<'a, T> {
         let pointer = self.capability_pointer(access);
         CapabilityIterator::new(self.0, pointer, access)
+    }
+
+    pub fn subsystem(&self, access: &impl ConfigRegionAccess) -> (SubsystemId, SubsystemVendorId) {
+        let data = unsafe { access.read(self.0, 0x2c) };
+        (data.get_bits(16..32) as u16, data.get_bits(0..16) as u16)
     }
 
     /// Get the contents of a BAR in a given slot. Empty bars will return `None`.
@@ -328,6 +343,90 @@ impl EndpointHeader {
                 port: bar.get_bits(2..32),
             })
         }
+    }
+}
+
+/// PCI-PCI Bridges have a Type-1 header, so the remainder of the header is of the form:
+/// ```ignore
+///     32                           16                              0
+///     +-----------------------------------------------------------+ 0x00
+///     |                                                           |
+///     |                Predefined region of header                |
+///     |                                                           |
+///     |                                                           |
+///     +-----------------------------------------------------------+
+///     |                  Base Address Register 0                  | 0x10
+///     |                                                           |
+///     +-----------------------------------------------------------+
+///     |                  Base Address Register 1                  | 0x14
+///     |                                                           |
+///     +--------------+--------------+--------------+--------------+
+///     | Secondary    | Subordinate  |  Secondary   | Primary Bus  | 0x18
+///     |Latency Timer | Bus Number   |  Bus Number  |   Number     |
+///     +--------------+--------------+--------------+--------------+
+///     |      Secondary Status       |  I/O Limit   |   I/O Base   | 0x1C
+///     |                             |              |              |
+///     +-----------------------------+--------------+--------------+
+///     |        Memory Limit         |         Memory Base         | 0x20
+///     |                             |                             |
+///     +-----------------------------+-----------------------------+
+///     |  Prefetchable Memory Limit  |  Prefetchable Memory Base   | 0x24
+///     |                             |                             |
+///     +-----------------------------+-----------------------------+
+///     |             Prefetchable Base Upper 32 Bits               | 0x28
+///     |                                                           |
+///     +-----------------------------------------------------------+
+///     |             Prefetchable Limit Upper 32 Bits              | 0x2C
+///     |                                                           |
+///     +-----------------------------+-----------------------------+
+///     |   I/O Limit Upper 16 Bits   |   I/O Base Upper 16 Bits    | 0x30
+///     |                             |                             |
+///     +-----------------------------+--------------+--------------+
+///     |              Reserved                      |  Capability  | 0x34
+///     |                                            |   Pointer    |
+///     +--------------------------------------------+--------------+
+///     |                  Expansion ROM base address               | 0x38
+///     |                                                           |
+///     +-----------------------------+--------------+--------------+
+///     |    Bridge Control           |  Interrupt   | Interrupt    | 0x3C
+///     |                             |     PIN      |   Line       |
+///     +-----------------------------+--------------+--------------+
+/// ```
+pub struct PciPciBridgeHeader(PciAddress);
+
+impl PciPciBridgeHeader {
+    pub fn from_header(
+        header: PciHeader,
+        access: &impl ConfigRegionAccess,
+    ) -> Option<PciPciBridgeHeader> {
+        match header.header_type(access) {
+            HeaderType::PciPciBridge => Some(PciPciBridgeHeader(header.0)),
+            _ => None,
+        }
+    }
+
+    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+        let data = unsafe { access.read(self.0, 0x4).get_bits(16..32) };
+        StatusRegister::new(data as u16)
+    }
+
+    pub fn header(&self) -> PciHeader {
+        PciHeader(self.0)
+    }
+
+    pub fn primary_bus_number(&self, access: &impl ConfigRegionAccess) -> u8 {
+        let data = unsafe { access.read(self.0, 0x18).get_bits(0..8) };
+        data as u8
+    }
+
+    pub fn secondary_bus_number(&self, access: &impl ConfigRegionAccess) -> u8 {
+        let data = unsafe { access.read(self.0, 0x18).get_bits(8..16) };
+        data as u8
+    }
+
+    pub fn subordinate_bus_number(&self, access: &impl ConfigRegionAccess) -> u8 {
+        let data = unsafe { access.read(self.0, 0x18).get_bits(16..24) };
+        data as u8
     }
 }
 
