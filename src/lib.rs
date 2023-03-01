@@ -50,14 +50,7 @@ impl PciAddress {
 
 impl fmt::Display for PciAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(
-            f,
-            "{:02x}-{:02x}:{:02x}.{}",
-            self.segment(),
-            self.bus(),
-            self.device(),
-            self.function()
-        )
+        write!(f, "{:02x}-{:02x}:{:02x}.{}", self.segment(), self.bus(), self.device(), self.function())
     }
 }
 
@@ -116,10 +109,7 @@ impl PciHeader {
 
     pub fn id(&self, access: &impl ConfigRegionAccess) -> (VendorId, DeviceId) {
         let id = unsafe { access.read(self.0, 0x00) };
-        (
-            id.get_bits(0..16) as VendorId,
-            id.get_bits(16..32) as DeviceId,
-        )
+        (id.get_bits(0..16) as VendorId, id.get_bits(16..32) as DeviceId)
     }
 
     pub fn header_type(&self, access: &impl ConfigRegionAccess) -> HeaderType {
@@ -210,10 +200,7 @@ impl PciHeader {
 pub struct EndpointHeader(PciAddress);
 
 impl EndpointHeader {
-    pub fn from_header(
-        header: PciHeader,
-        access: &impl ConfigRegionAccess,
-    ) -> Option<EndpointHeader> {
+    pub fn from_header(header: PciHeader, access: &impl ConfigRegionAccess) -> Option<EndpointHeader> {
         match header.header_type(access) {
             HeaderType::Endpoint => Some(EndpointHeader(header.0)),
             _ => None,
@@ -238,10 +225,7 @@ impl EndpointHeader {
         }
     }
 
-    pub fn capabilities<'a, T: ConfigRegionAccess>(
-        &self,
-        access: &'a T,
-    ) -> CapabilityIterator<'a, T> {
+    pub fn capabilities<'a, T: ConfigRegionAccess>(&self, access: &'a T) -> CapabilityIterator<'a, T> {
         let pointer = self.capability_pointer(access);
         CapabilityIterator::new(self.0, pointer, access)
     }
@@ -288,11 +272,7 @@ impl EndpointHeader {
                         readback.set_bits(0..4, 0);
                         1 << readback.trailing_zeros()
                     };
-                    Some(Bar::Memory32 {
-                        address,
-                        size,
-                        prefetchable,
-                    })
+                    Some(Bar::Memory32 { address, size, prefetchable })
                 }
 
                 0b10 => {
@@ -330,19 +310,13 @@ impl EndpointHeader {
                         address
                     };
 
-                    Some(Bar::Memory64 {
-                        address,
-                        size: size as u64,
-                        prefetchable,
-                    })
+                    Some(Bar::Memory64 { address, size: size as u64, prefetchable })
                 }
                 // TODO: should we bother to return an error here?
                 _ => panic!("BAR Memory type is reserved!"),
             }
         } else {
-            Some(Bar::Io {
-                port: bar.get_bits(2..32),
-            })
+            Some(Bar::Io { port: bar.get_bits(2..32) })
         }
     }
 }
@@ -396,10 +370,7 @@ impl EndpointHeader {
 pub struct PciPciBridgeHeader(PciAddress);
 
 impl PciPciBridgeHeader {
-    pub fn from_header(
-        header: PciHeader,
-        access: &impl ConfigRegionAccess,
-    ) -> Option<PciPciBridgeHeader> {
+    pub fn from_header(header: PciHeader, access: &impl ConfigRegionAccess) -> Option<PciPciBridgeHeader> {
         match header.header_type(access) {
             HeaderType::PciPciBridge => Some(PciPciBridgeHeader(header.0)),
             _ => None,
@@ -435,17 +406,7 @@ pub const MAX_BARS: usize = 6;
 
 #[derive(Clone, Copy, Debug)]
 pub enum Bar {
-    Memory32 {
-        address: u32,
-        size: u32,
-        prefetchable: bool,
-    },
-    Memory64 {
-        address: u64,
-        size: u64,
-        prefetchable: bool,
-    },
-    Io {
-        port: u32,
-    },
+    Memory32 { address: u32, size: u32, prefetchable: bool },
+    Memory64 { address: u64, size: u64, prefetchable: bool },
+    Io { port: u32 },
 }
