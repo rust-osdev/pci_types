@@ -78,6 +78,7 @@ pub trait ConfigRegionAccess: Send {
 }
 
 #[non_exhaustive]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HeaderType {
     Endpoint,
     PciPciBridge,
