@@ -64,7 +64,7 @@ pub type SubsystemId = u16;
 pub type SubsystemVendorId = u16;
 
 // TODO: documentation
-pub trait ConfigRegionAccess: Send {
+pub trait ConfigRegionAccess {
     fn function_exists(&self, address: PciAddress) -> bool;
     unsafe fn read(&self, address: PciAddress, offset: u16) -> u32;
     unsafe fn write(&self, address: PciAddress, offset: u16, value: u32);
