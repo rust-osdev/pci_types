@@ -24,6 +24,8 @@ pub enum DeviceType {
     AtaController,
     SataController,
     SasController,
+    NvmeController,
+    UfsController,
     OtherMassStorageController,
 
     /*
@@ -196,6 +198,8 @@ impl From<(BaseClass, SubClass)> for DeviceType {
             (0x01, 0x05) => DeviceType::AtaController,
             (0x01, 0x06) => DeviceType::SataController,
             (0x01, 0x07) => DeviceType::SasController,
+            (0x01, 0x08) => DeviceType::NvmeController,
+            (0x01, 0x09) => DeviceType::UfsController,
             (0x01, 0x80) => DeviceType::OtherMassStorageController,
 
             (0x02, 0x00) => DeviceType::EthernetController,
