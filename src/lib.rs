@@ -62,6 +62,8 @@ pub type SubClass = u8;
 pub type Interface = u8;
 pub type SubsystemId = u16;
 pub type SubsystemVendorId = u16;
+pub type InterruptLine = u8;
+pub type InterruptPin = u8;
 
 // TODO: documentation
 pub trait ConfigRegionAccess {
@@ -194,7 +196,7 @@ impl PciHeader {
 ///     |                                                           |
 ///     +--------------+--------------+--------------+--------------+
 ///     |   Max_Lat    |   Min_Gnt    |  Interrupt   |  Interrupt   | 0x3c
-///     |              |              |   line       |   line       |
+///     |              |              |   pin        |   line       |
 ///     +--------------+--------------+--------------+--------------+
 /// ```
 pub struct EndpointHeader(PciAddress);
@@ -318,6 +320,13 @@ impl EndpointHeader {
         } else {
             Some(Bar::Io { port: bar.get_bits(2..32) })
         }
+    }
+
+    pub fn interrupt(&self, access: &impl ConfigRegionAccess) -> (InterruptPin, InterruptLine) {
+        // According to the PCI Express Specification 4.0, Min_Gnt/Max_Lat registers
+        // must be read-only and hardwired to 00h.
+        let data = unsafe { access.read(self.0, 0x3c) };
+        (data.get_bits(8..16) as u8, data.get_bits(0..8) as u8)
     }
 }
 
