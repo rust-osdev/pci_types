@@ -318,7 +318,7 @@ impl EndpointHeader {
                 _ => panic!("BAR Memory type is reserved!"),
             }
         } else {
-            Some(Bar::Io { port: bar.get_bits(2..32) })
+            Some(Bar::Io { port: bar.get_bits(2..32) << 2 })
         }
     }
 
