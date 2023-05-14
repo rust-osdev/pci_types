@@ -290,7 +290,7 @@ impl EndpointHeader {
                     let size = unsafe {
                         access.write(self.0, offset, 0xfffffff0);
                         access.write(self.0, offset + 4, 0xffffffff);
-                        let readback_low = access.read(self.0, offset);
+                        let mut readback_low = access.read(self.0, offset);
                         let readback_high = access.read(self.0, offset + 4);
                         access.write(self.0, offset, address);
                         access.write(self.0, offset + 4, address_upper);
@@ -298,6 +298,7 @@ impl EndpointHeader {
                         /*
                          * If the readback from the first slot is not 0, the size of the BAR is less than 4GiB.
                          */
+                        readback_low.set_bits(0..4, 0);
                         if readback_low != 0 {
                             (1 << readback_low.trailing_zeros()) as u64
                         } else {
@@ -312,7 +313,7 @@ impl EndpointHeader {
                         address
                     };
 
-                    Some(Bar::Memory64 { address, size: size as u64, prefetchable })
+                    Some(Bar::Memory64 { address, size, prefetchable })
                 }
                 // TODO: should we bother to return an error here?
                 _ => panic!("BAR Memory type is reserved!"),
