@@ -367,7 +367,7 @@ impl EndpointHeader {
         slot: u8,
         access: &impl ConfigRegionAccess,
         value: usize,
-    ) -> Result<(), ()> {
+    ) -> Result<(), BarWriteError> {
         match self.bar(slot, access) {
             Some(Bar::Memory64 { .. }) => {
                 let offset = 0x10 + (slot as u16) * 4;
@@ -378,14 +378,17 @@ impl EndpointHeader {
                 Ok(())
             }
             Some(Bar::Memory32 { .. }) | Some(Bar::Io { .. }) => {
-                assert!(value <= u32::MAX as usize, "Tried to write value larger than `u32::MAX` to 32-bit BAR");
+                if value > u32::MAX as usize {
+                    return Err(BarWriteError::InvalidValue);
+                }
+
                 let offset = 0x10 + (slot as u16) * 4;
                 unsafe {
                     access.write(self.0, offset, value as u32);
                 }
                 Ok(())
             }
-            None => return Err(()),
+            None => return Err(BarWriteError::NoSuchBar),
         }
     }
 
@@ -495,4 +498,10 @@ pub enum Bar {
     Memory32 { address: u32, size: u32, prefetchable: bool },
     Memory64 { address: u64, size: u64, prefetchable: bool },
     Io { port: u32 },
+}
+
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+pub enum BarWriteError {
+    NoSuchBar,
+    InvalidValue,
 }
