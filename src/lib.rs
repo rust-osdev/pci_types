@@ -356,6 +356,37 @@ impl EndpointHeader {
         }
     }
 
+    /// Write to a BAR, setting the address for a device to use. The supplied value must be a valid
+    /// BAR value (refer to the PCIe specification for requirements) and must be of the correct
+    /// size (i.e. no larger than `u32::MAX` for 32-bit BARs). In the case of a 64-bit BAR, the
+    /// supplied slot should be the first slot of the pair.
+    pub unsafe fn write_bar(
+        &mut self,
+        slot: u8,
+        access: &impl ConfigRegionAccess,
+        value: usize,
+    ) -> Result<(), ()> {
+        match self.bar(slot, access) {
+            Some(Bar::Memory64 { .. }) => {
+                let offset = 0x10 + (slot as u16) * 4;
+                unsafe {
+                    access.write(self.0, offset, value.get_bits(0..32) as u32);
+                    access.write(self.0, offset + 4, value.get_bits(32..64) as u32);
+                }
+                Ok(())
+            }
+            Some(Bar::Memory32 { .. }) | Some(Bar::Io { .. }) => {
+                assert!(value <= u32::MAX as usize, "Tried to write value larger than `u32::MAX` to 32-bit BAR");
+                let offset = 0x10 + (slot as u16) * 4;
+                unsafe {
+                    access.write(self.0, offset, value as u32);
+                }
+                Ok(())
+            }
+            None => return Err(()),
+        }
+    }
+
     pub fn interrupt(&self, access: &impl ConfigRegionAccess) -> (InterruptPin, InterruptLine) {
         // According to the PCI Express Specification 4.0, Min_Gnt/Max_Lat registers
         // must be read-only and hardwired to 00h.
