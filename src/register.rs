@@ -1,6 +1,8 @@
 use bit_field::BitField;
-use core::convert::TryFrom;
-use core::fmt::{Debug, Formatter};
+use core::{
+    convert::TryFrom,
+    fmt::{Debug, Formatter},
+};
 
 /// Slowest time that a device will assert DEVSEL# for any bus command except Configuration Space
 /// read and writes
@@ -116,13 +118,26 @@ impl Debug for StatusRegister {
             .field("signalled_target_abort", &self.signalled_target_abort())
             .field("devsel_timing", &self.devsel_timing())
             .field("master_data_parity_error", &self.master_data_parity_error())
-            .field(
-                "fast_back_to_back_capable",
-                &self.fast_back_to_back_capable(),
-            )
+            .field("fast_back_to_back_capable", &self.fast_back_to_back_capable())
             .field("capable_66mhz", &self.capable_66mhz())
             .field("has_capability_list", &self.has_capability_list())
             .field("interrupt_status", &self.interrupt_status())
             .finish()
+    }
+}
+
+bitflags::bitflags! {
+    pub struct CommandRegister: u16 {
+        const IO_ENABLE = 1 << 0;
+        const MEMORY_ENABLE = 1 << 1;
+        const BUS_MASTER_ENABLE = 1 << 2;
+        const SPECIAL_CYCLE_ENABLE = 1 << 3;
+        const MEMORY_WRITE_AND_INVALIDATE = 1 << 4;
+        const VGA_PALETTE_SNOOP = 1 << 5;
+        const PARITY_ERROR_RESPONSE = 1 << 6;
+        const IDSEL_STEP_WAIT_CYCLE_CONTROL = 1 << 7;
+        const SERR_ENABLE = 1 << 8;
+        const FAST_BACK_TO_BACK_ENABLE = 1 << 9;
+        const INTERRUPT_DISABLE = 1 << 10;
     }
 }
