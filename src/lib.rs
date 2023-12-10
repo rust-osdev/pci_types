@@ -18,7 +18,7 @@ use core::fmt;
 ///  |            segment            |      bus      | device  | func |
 ///  +-------------------------------+---------------+---------+------+
 /// ```
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Debug, Default)]
+#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord, Default)]
 pub struct PciAddress(u32);
 
 impl PciAddress {
@@ -51,6 +51,12 @@ impl PciAddress {
 impl fmt::Display for PciAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{:02x}-{:02x}:{:02x}.{}", self.segment(), self.bus(), self.device(), self.function())
+    }
+}
+
+impl fmt::Debug for PciAddress {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self)
     }
 }
 
