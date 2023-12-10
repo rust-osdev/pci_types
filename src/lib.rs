@@ -10,7 +10,9 @@ use crate::capability::CapabilityIterator;
 use bit_field::BitField;
 use core::fmt;
 
-/// PCIe supports 65536 segments, each with 256 buses, each with 32 slots, each with 8 possible functions. We cram this into a `u32`:
+/// The address of a PCIe function.
+///
+/// PCIe supports 65536 segments, each with 256 buses, each with 32 slots, each with 8 possible functions. We pack this into a `u32`:
 ///
 /// ```ignore
 /// 32                              16               8         3      0
@@ -232,6 +234,10 @@ impl EndpointHeader {
         }
     }
 
+    pub fn header(&self) -> PciHeader {
+        PciHeader(self.0)
+    }
+
     pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
         self.header().status(access)
     }
@@ -245,10 +251,6 @@ impl EndpointHeader {
         F: Fn(CommandRegister) -> CommandRegister,
     {
         self.header().update_command(access, f);
-    }
-
-    pub fn header(&self) -> PciHeader {
-        PciHeader(self.0)
     }
 
     pub fn capability_pointer(&self, access: &impl ConfigRegionAccess) -> u16 {
@@ -451,13 +453,23 @@ impl PciPciBridgeHeader {
         }
     }
 
-    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
-        let data = unsafe { access.read(self.0, 0x4).get_bits(16..32) };
-        StatusRegister::new(data as u16)
-    }
-
     pub fn header(&self) -> PciHeader {
         PciHeader(self.0)
+    }
+
+    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+        self.header().status(access)
+    }
+
+    pub fn command(&self, access: &impl ConfigRegionAccess) -> CommandRegister {
+        self.header().command(access)
+    }
+
+    pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
+    where
+        F: Fn(CommandRegister) -> CommandRegister,
+    {
+        self.header().update_command(access, f);
     }
 
     pub fn primary_bus_number(&self, access: &impl ConfigRegionAccess) -> u8 {
