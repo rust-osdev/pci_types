@@ -1,6 +1,6 @@
 [package]
 name = "pci_types"
-version = "0.6.1"
+version = "0.6.2"
 authors = ["Isaac Woods"]
 repository = "https://github.com/rust-osdev/pci_types"
 description = "Library with types for handling PCI devices"
