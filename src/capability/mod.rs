@@ -3,8 +3,10 @@ use bit_field::BitField;
 use core::fmt::Formatter;
 
 mod msi;
+mod msix;
 
 pub use msi::{MsiCapability, MultipleMessageSupport, TriggerMode};
+pub use msix::MsixCapability;
 
 #[derive(Clone)]
 pub struct PciCapabilityAddress {
@@ -52,16 +54,18 @@ pub enum PciCapability {
     /// PCI Express capability, Cap ID = `0x10`
     PciExpress(PciCapabilityAddress),
     /// MSI-X capability, Cap ID = `0x11`
-    MsiX(PciCapabilityAddress),
+    MsiX(MsixCapability),
     /// Unknown capability
-    Unknown {
-        address: PciCapabilityAddress,
-        id: u8,
-    },
+    Unknown { address: PciCapabilityAddress, id: u8 },
 }
 
 impl PciCapability {
-    fn parse(id: u8, address: PciCapabilityAddress, extension: u16) -> Option<PciCapability> {
+    fn parse(
+        id: u8,
+        address: PciCapabilityAddress,
+        extension: u16,
+        access: &impl ConfigRegionAccess,
+    ) -> Option<PciCapability> {
         match id {
             0x00 => None, // null capability
             0x01 => Some(PciCapability::PowerManagement(address)),
@@ -79,7 +83,7 @@ impl PciCapability {
             0x0D => Some(PciCapability::BridgeSubsystemVendorId(address)),
             0x0E => Some(PciCapability::AGP3(address)),
             0x10 => Some(PciCapability::PciExpress(address)),
-            0x11 => Some(PciCapability::MsiX(address)),
+            0x11 => Some(PciCapability::MsiX(MsixCapability::new(address, extension, access))),
             _ => Some(PciCapability::Unknown { address, id }),
         }
     }
@@ -92,16 +96,8 @@ pub struct CapabilityIterator<'a, T: ConfigRegionAccess> {
 }
 
 impl<'a, T: ConfigRegionAccess> CapabilityIterator<'a, T> {
-    pub(crate) fn new(
-        address: PciAddress,
-        offset: u16,
-        access: &'a T,
-    ) -> CapabilityIterator<'a, T> {
-        CapabilityIterator {
-            address,
-            offset,
-            access,
-        }
+    pub(crate) fn new(address: PciAddress, offset: u16, access: &'a T) -> CapabilityIterator<'a, T> {
+        CapabilityIterator { address, offset, access }
     }
 }
 
@@ -119,11 +115,9 @@ impl<'a, T: ConfigRegionAccess> Iterator for CapabilityIterator<'a, T> {
             let extension = data.get_bits(16..32) as u16;
             let cap = PciCapability::parse(
                 id as u8,
-                PciCapabilityAddress {
-                    address: self.address,
-                    offset: self.offset,
-                },
+                PciCapabilityAddress { address: self.address, offset: self.offset },
                 extension,
+                self.access,
             );
             self.offset = next_ptr as u16;
             if let Some(cap) = cap {
