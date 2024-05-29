@@ -1,4 +1,4 @@
-use super::{PciCapabilityAddress, TriggerMode};
+use super::PciCapabilityAddress;
 use crate::ConfigRegionAccess;
 use bit_field::BitField;
 
@@ -51,6 +51,10 @@ impl MsixCapability {
          * they're retained as part of the offset.
          */
         self.table & !0b111
+    }
+
+    pub fn table_size(&self) -> u16 {
+        self.table_size
     }
 
     pub fn pba_bar(&self) -> u8 {
