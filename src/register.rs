@@ -139,5 +139,6 @@ bitflags::bitflags! {
         const SERR_ENABLE = 1 << 8;
         const FAST_BACK_TO_BACK_ENABLE = 1 << 9;
         const INTERRUPT_DISABLE = 1 << 10;
+        const _ = !0;
     }
 }
