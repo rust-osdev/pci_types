@@ -146,12 +146,12 @@ impl PciHeader {
         PciHeader(address)
     }
 
-    pub fn id(&self, access: &impl ConfigRegionAccess) -> (VendorId, DeviceId) {
+    pub fn id(&self, access: impl ConfigRegionAccess) -> (VendorId, DeviceId) {
         let id = unsafe { access.read(self.0, 0x00) };
         (id.get_bits(0..16) as VendorId, id.get_bits(16..32) as DeviceId)
     }
 
-    pub fn header_type(&self, access: &impl ConfigRegionAccess) -> HeaderType {
+    pub fn header_type(&self, access: impl ConfigRegionAccess) -> HeaderType {
         /*
          * Read bits 0..=6 of the Header Type. Bit 7 dictates whether the device has multiple functions and so
          * isn't returned here.
@@ -164,7 +164,7 @@ impl PciHeader {
         }
     }
 
-    pub fn has_multiple_functions(&self, access: &impl ConfigRegionAccess) -> bool {
+    pub fn has_multiple_functions(&self, access: impl ConfigRegionAccess) -> bool {
         /*
          * Reads bit 7 of the Header Type, which is 1 if the device has multiple functions.
          */
@@ -173,7 +173,7 @@ impl PciHeader {
 
     pub fn revision_and_class(
         &self,
-        access: &impl ConfigRegionAccess,
+        access: impl ConfigRegionAccess,
     ) -> (DeviceRevision, BaseClass, SubClass, Interface) {
         let field = unsafe { access.read(self.0, 0x08) };
         (
@@ -184,17 +184,17 @@ impl PciHeader {
         )
     }
 
-    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+    pub fn status(&self, access: impl ConfigRegionAccess) -> StatusRegister {
         let data = unsafe { access.read(self.0, 0x4).get_bits(16..32) };
         StatusRegister::new(data as u16)
     }
 
-    pub fn command(&self, access: &impl ConfigRegionAccess) -> CommandRegister {
+    pub fn command(&self, access: impl ConfigRegionAccess) -> CommandRegister {
         let data = unsafe { access.read(self.0, 0x4).get_bits(0..16) };
         CommandRegister::from_bits_retain(data as u16)
     }
 
-    pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
+    pub fn update_command<F>(&self, access: impl ConfigRegionAccess, f: F)
     where
         F: FnOnce(CommandRegister) -> CommandRegister,
     {
@@ -256,7 +256,7 @@ impl PciHeader {
 pub struct EndpointHeader(PciAddress);
 
 impl EndpointHeader {
-    pub fn from_header(header: PciHeader, access: &impl ConfigRegionAccess) -> Option<EndpointHeader> {
+    pub fn from_header(header: PciHeader, access: impl ConfigRegionAccess) -> Option<EndpointHeader> {
         match header.header_type(access) {
             HeaderType::Endpoint => Some(EndpointHeader(header.0)),
             _ => None,
@@ -267,23 +267,23 @@ impl EndpointHeader {
         PciHeader(self.0)
     }
 
-    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+    pub fn status(&self, access: impl ConfigRegionAccess) -> StatusRegister {
         self.header().status(access)
     }
 
-    pub fn command(&self, access: &impl ConfigRegionAccess) -> CommandRegister {
+    pub fn command(&self, access: impl ConfigRegionAccess) -> CommandRegister {
         self.header().command(access)
     }
 
-    pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
+    pub fn update_command<F>(&self, access: impl ConfigRegionAccess, f: F)
     where
         F: FnOnce(CommandRegister) -> CommandRegister,
     {
         self.header().update_command(access, f);
     }
 
-    pub fn capability_pointer(&self, access: &impl ConfigRegionAccess) -> u16 {
-        let status = self.status(access);
+    pub fn capability_pointer(&self, access: impl ConfigRegionAccess) -> u16 {
+        let status = self.status(&access);
         if status.has_capability_list() {
             unsafe { access.read(self.0, 0x34).get_bits(0..8) as u16 }
         } else {
@@ -296,7 +296,7 @@ impl EndpointHeader {
         CapabilityIterator::new(self.0, pointer, access)
     }
 
-    pub fn subsystem(&self, access: &impl ConfigRegionAccess) -> (SubsystemId, SubsystemVendorId) {
+    pub fn subsystem(&self, access: impl ConfigRegionAccess) -> (SubsystemId, SubsystemVendorId) {
         let data = unsafe { access.read(self.0, 0x2c) };
         (data.get_bits(16..32) as u16, data.get_bits(0..16) as u16)
     }
@@ -306,7 +306,7 @@ impl EndpointHeader {
     /// ### Note
     /// 64-bit memory BARs use two slots, so if one is decoded in e.g. slot #0, this method should not be called
     /// for slot #1
-    pub fn bar(&self, slot: u8, access: &impl ConfigRegionAccess) -> Option<Bar> {
+    pub fn bar(&self, slot: u8, access: impl ConfigRegionAccess) -> Option<Bar> {
         if slot >= 6 {
             return None;
         }
@@ -397,10 +397,10 @@ impl EndpointHeader {
     pub unsafe fn write_bar(
         &mut self,
         slot: u8,
-        access: &impl ConfigRegionAccess,
+        access: impl ConfigRegionAccess,
         value: usize,
     ) -> Result<(), BarWriteError> {
-        match self.bar(slot, access) {
+        match self.bar(slot, &access) {
             Some(Bar::Memory64 { .. }) => {
                 let offset = 0x10 + (slot as u16) * 4;
                 unsafe {
@@ -424,7 +424,7 @@ impl EndpointHeader {
         }
     }
 
-    pub fn interrupt(&self, access: &impl ConfigRegionAccess) -> (InterruptPin, InterruptLine) {
+    pub fn interrupt(&self, access: impl ConfigRegionAccess) -> (InterruptPin, InterruptLine) {
         // According to the PCI Express Specification 4.0, Min_Gnt/Max_Lat registers
         // must be read-only and hardwired to 00h.
         let data = unsafe { access.read(self.0, 0x3c) };
@@ -494,7 +494,7 @@ impl EndpointHeader {
 pub struct PciPciBridgeHeader(PciAddress);
 
 impl PciPciBridgeHeader {
-    pub fn from_header(header: PciHeader, access: &impl ConfigRegionAccess) -> Option<PciPciBridgeHeader> {
+    pub fn from_header(header: PciHeader, access: impl ConfigRegionAccess) -> Option<PciPciBridgeHeader> {
         match header.header_type(access) {
             HeaderType::PciPciBridge => Some(PciPciBridgeHeader(header.0)),
             _ => None,
@@ -505,32 +505,32 @@ impl PciPciBridgeHeader {
         PciHeader(self.0)
     }
 
-    pub fn status(&self, access: &impl ConfigRegionAccess) -> StatusRegister {
+    pub fn status(&self, access: impl ConfigRegionAccess) -> StatusRegister {
         self.header().status(access)
     }
 
-    pub fn command(&self, access: &impl ConfigRegionAccess) -> CommandRegister {
+    pub fn command(&self, access: impl ConfigRegionAccess) -> CommandRegister {
         self.header().command(access)
     }
 
-    pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
+    pub fn update_command<F>(&self, access: impl ConfigRegionAccess, f: F)
     where
         F: FnOnce(CommandRegister) -> CommandRegister,
     {
         self.header().update_command(access, f);
     }
 
-    pub fn primary_bus_number(&self, access: &impl ConfigRegionAccess) -> u8 {
+    pub fn primary_bus_number(&self, access: impl ConfigRegionAccess) -> u8 {
         let data = unsafe { access.read(self.0, 0x18).get_bits(0..8) };
         data as u8
     }
 
-    pub fn secondary_bus_number(&self, access: &impl ConfigRegionAccess) -> u8 {
+    pub fn secondary_bus_number(&self, access: impl ConfigRegionAccess) -> u8 {
         let data = unsafe { access.read(self.0, 0x18).get_bits(8..16) };
         data as u8
     }
 
-    pub fn subordinate_bus_number(&self, access: &impl ConfigRegionAccess) -> u8 {
+    pub fn subordinate_bus_number(&self, access: impl ConfigRegionAccess) -> u8 {
         let data = unsafe { access.read(self.0, 0x18).get_bits(16..24) };
         data as u8
     }
