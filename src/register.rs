@@ -138,6 +138,7 @@ impl Debug for StatusRegister {
 }
 
 bitflags::bitflags! {
+    #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
     pub struct CommandRegister: u16 {
         const IO_ENABLE = 1 << 0;
         const MEMORY_ENABLE = 1 << 1;
