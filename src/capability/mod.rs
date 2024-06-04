@@ -89,19 +89,19 @@ impl PciCapability {
     }
 }
 
-pub struct CapabilityIterator<'a, T: ConfigRegionAccess> {
+pub struct CapabilityIterator<T: ConfigRegionAccess> {
     address: PciAddress,
     offset: u16,
-    access: &'a T,
+    access: T,
 }
 
-impl<'a, T: ConfigRegionAccess> CapabilityIterator<'a, T> {
-    pub(crate) fn new(address: PciAddress, offset: u16, access: &'a T) -> CapabilityIterator<'a, T> {
+impl<T: ConfigRegionAccess> CapabilityIterator<T> {
+    pub(crate) fn new(address: PciAddress, offset: u16, access: T) -> CapabilityIterator<T> {
         CapabilityIterator { address, offset, access }
     }
 }
 
-impl<'a, T: ConfigRegionAccess> Iterator for CapabilityIterator<'a, T> {
+impl<T: ConfigRegionAccess> Iterator for CapabilityIterator<T> {
     type Item = PciCapability;
 
     fn next(&mut self) -> Option<Self::Item> {
@@ -117,7 +117,7 @@ impl<'a, T: ConfigRegionAccess> Iterator for CapabilityIterator<'a, T> {
                 id as u8,
                 PciCapabilityAddress { address: self.address, offset: self.offset },
                 extension,
-                self.access,
+                &self.access,
             );
             self.offset = next_ptr as u16;
             if let Some(cap) = cap {

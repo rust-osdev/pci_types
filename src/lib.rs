@@ -291,8 +291,8 @@ impl EndpointHeader {
         }
     }
 
-    pub fn capabilities<'a, T: ConfigRegionAccess>(&self, access: &'a T) -> CapabilityIterator<'a, T> {
-        let pointer = self.capability_pointer(access);
+    pub fn capabilities<T: ConfigRegionAccess>(&self, access: T) -> CapabilityIterator<T> {
+        let pointer = self.capability_pointer(&access);
         CapabilityIterator::new(self.0, pointer, access)
     }
 
