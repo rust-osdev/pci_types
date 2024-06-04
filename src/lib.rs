@@ -413,6 +413,19 @@ impl EndpointHeader {
         let data = unsafe { access.read(self.0, 0x3c) };
         (data.get_bits(8..16) as u8, data.get_bits(0..8) as u8)
     }
+
+    pub fn update_interrupt<F>(&mut self, access: &impl ConfigRegionAccess, f: F)
+    where
+        F: FnOnce((InterruptPin, InterruptLine)) -> (InterruptPin, InterruptLine),
+    {
+        let mut data = unsafe { access.read(self.0, 0x3c) };
+        let (new_pin, new_line) = f((data.get_bits(8..16) as u8, data.get_bits(0..8) as u8));
+        data.set_bits(8..16, new_pin.into());
+        data.set_bits(0..8, new_line.into());
+        unsafe {
+            access.write(self.0, 0x3c, data);
+        }
+    }
 }
 
 /// PCI-PCI Bridges have a Type-1 header, so the remainder of the header is of the form:
