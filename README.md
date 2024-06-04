@@ -1,5 +1,5 @@
 # `pci_types`
-![Build Status](https://github.com/rust-osdev/pci_types/actions/workflows/build.yml/badge.svg)
+[![CI](https://github.com/rust-osdev/pci_types/actions/workflows/ci.yml/badge.svg)](https://github.com/rust-osdev/pci_types/actions/workflows/ci.yml)
 [![Version](https://img.shields.io/crates/v/pci_types.svg?style=rounded-square)](https://crates.io/crates/pci_types/)
 [![docs.rs](https://docs.rs/pci_types/badge.svg)](https://docs.rs/pci_types/)
 [![License](https://img.shields.io/badge/License-Apache_2.0-blue.svg)](https://opensource.org/licenses/Apache-2.0)
