@@ -76,7 +76,19 @@ pub type InterruptPin = u8;
 // TODO: documentation
 pub trait ConfigRegionAccess {
     fn function_exists(&self, address: PciAddress) -> bool;
+
+    /// Performs a PCI read at `address` with `offset`.
+    /// 
+    /// # Safety
+    /// 
+    /// `address` and `offset` must be valid for PCI reads.
     unsafe fn read(&self, address: PciAddress, offset: u16) -> u32;
+
+    /// Performs a PCI write at `address` with `offset`.
+    /// 
+    /// # Safety
+    /// 
+    /// `address` and `offset` must be valid for PCI writes.
     unsafe fn write(&self, address: PciAddress, offset: u16, value: u32);
 }
 
@@ -358,10 +370,13 @@ impl EndpointHeader {
         }
     }
 
-    /// Write to a BAR, setting the address for a device to use. The supplied value must be a valid
-    /// BAR value (refer to the PCIe specification for requirements) and must be of the correct
-    /// size (i.e. no larger than `u32::MAX` for 32-bit BARs). In the case of a 64-bit BAR, the
-    /// supplied slot should be the first slot of the pair.
+    /// Write to a BAR, setting the address for a device to use.
+    /// 
+    /// # Safety
+    /// 
+    /// The supplied value must be a valid BAR value (refer to the PCIe specification for
+    /// requirements) and must be of the correct size (i.e. no larger than `u32::MAX` for 32-bit
+    /// BARs). In the case of a 64-bit BAR, the supplied slot should be the first slot of the pair.
     pub unsafe fn write_bar(
         &mut self,
         slot: u8,
