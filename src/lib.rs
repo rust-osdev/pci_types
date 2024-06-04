@@ -388,7 +388,7 @@ impl EndpointHeader {
                 }
                 Ok(())
             }
-            None => return Err(BarWriteError::NoSuchBar),
+            None => Err(BarWriteError::NoSuchBar),
         }
     }
 
