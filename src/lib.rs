@@ -92,6 +92,23 @@ pub trait ConfigRegionAccess {
     unsafe fn write(&self, address: PciAddress, offset: u16, value: u32);
 }
 
+impl<T: ConfigRegionAccess + ?Sized> ConfigRegionAccess for &T {
+    #[inline]
+    fn function_exists(&self, address: PciAddress) -> bool {
+        (**self).function_exists(address)
+    }
+
+    #[inline]
+    unsafe fn read(&self, address: PciAddress, offset: u16) -> u32 {
+        (**self).read(address, offset)
+    }
+
+    #[inline]
+    unsafe fn write(&self, address: PciAddress, offset: u16, value: u32) {
+        (**self).write(address, offset, value)
+    }
+}
+
 #[non_exhaustive]
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HeaderType {
