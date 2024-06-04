@@ -82,18 +82,18 @@ impl MsiCapability {
         self.multiple_message_capable
     }
 
-    pub fn ctrl(&self, access: &impl ConfigRegionAccess) -> u32 {
+    pub fn ctrl(&self, access: impl ConfigRegionAccess) -> u32 {
         unsafe { access.read(self.address.address, self.address.offset) }
     }
 
     /// Is MSI capability enabled?
-    pub fn is_enabled(&self, access: &impl ConfigRegionAccess) -> bool {
+    pub fn is_enabled(&self, access: impl ConfigRegionAccess) -> bool {
         let reg = unsafe { access.read(self.address.address, self.address.offset) };
         reg.get_bit(16)
     }
 
     /// Enable or disable MSI capability
-    pub fn set_enabled(&self, enabled: bool, access: &impl ConfigRegionAccess) {
+    pub fn set_enabled(&self, enabled: bool, access: impl ConfigRegionAccess) {
         let mut reg = unsafe { access.read(self.address.address, self.address.offset) };
         reg.set_bit(16, enabled);
         unsafe { access.write(self.address.address, self.address.offset, reg) };
@@ -101,14 +101,14 @@ impl MsiCapability {
 
     /// Set how many interrupts the device will use. If requested count is bigger than supported count,
     /// the second will be used.
-    pub fn set_multiple_message_enable(&self, data: MultipleMessageSupport, access: &impl ConfigRegionAccess) {
+    pub fn set_multiple_message_enable(&self, data: MultipleMessageSupport, access: impl ConfigRegionAccess) {
         let mut reg = unsafe { access.read(self.address.address, self.address.offset) };
         reg.set_bits(4..7, (data.min(self.multiple_message_capable)) as u32);
         unsafe { access.write(self.address.address, self.address.offset, reg) };
     }
 
     /// Return how many interrupts the device is using
-    pub fn get_multiple_message_enable(&self, access: &impl ConfigRegionAccess) -> MultipleMessageSupport {
+    pub fn get_multiple_message_enable(&self, access: impl ConfigRegionAccess) -> MultipleMessageSupport {
         let reg = unsafe { access.read(self.address.address, self.address.offset) };
         MultipleMessageSupport::try_from(reg.get_bits(4..7) as u8).unwrap_or(MultipleMessageSupport::Int1)
     }
@@ -125,7 +125,7 @@ impl MsiCapability {
         address: u32,
         vector: u8,
         trigger_mode: TriggerMode,
-        access: &impl ConfigRegionAccess,
+        access: impl ConfigRegionAccess,
     ) {
         unsafe { access.write(self.address.address, self.address.offset + 0x4, address) }
         let data_offset = if self.is_64bit { 0xC } else { 0x8 };
@@ -140,7 +140,7 @@ impl MsiCapability {
     /// # Note
     /// Only supported on when device supports 64-bit addressing and per-vector masking. Otherwise
     /// returns `0`
-    pub fn get_message_mask(&self, access: &impl ConfigRegionAccess) -> u32 {
+    pub fn get_message_mask(&self, access: impl ConfigRegionAccess) -> u32 {
         if self.is_64bit && self.per_vector_masking {
             unsafe { access.read(self.address.address, self.address.offset + 0x10) }
         } else {
@@ -153,7 +153,7 @@ impl MsiCapability {
     /// # Note
     /// Only supported on when device supports 64-bit addressing and per-vector masking. Otherwise
     /// will do nothing
-    pub fn set_message_mask(&self, access: &impl ConfigRegionAccess, mask: u32) {
+    pub fn set_message_mask(&self, access: impl ConfigRegionAccess, mask: u32) {
         if self.is_64bit && self.per_vector_masking {
             unsafe { access.write(self.address.address, self.address.offset + 0x10, mask) }
         }
@@ -163,7 +163,7 @@ impl MsiCapability {
     ///
     /// # Note
     /// Only supported on when device supports 64-bit addressing. Otherwise will return `0`
-    pub fn get_pending(&self, access: &impl ConfigRegionAccess) -> u32 {
+    pub fn get_pending(&self, access: impl ConfigRegionAccess) -> u32 {
         if self.is_64bit {
             unsafe { access.read(self.address.address, self.address.offset + 0x14) }
         } else {

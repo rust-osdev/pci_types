@@ -16,7 +16,7 @@ impl MsixCapability {
     pub(crate) fn new(
         address: PciCapabilityAddress,
         control: u16,
-        access: &impl ConfigRegionAccess,
+        access: impl ConfigRegionAccess,
     ) -> MsixCapability {
         let table_size = control.get_bits(0..11) + 1;
         let table = unsafe { access.read(address.address, address.offset + 0x04) };
@@ -31,7 +31,7 @@ impl MsixCapability {
     /// `[MsixCapability::table_bar]` and `[MsixCapability::table_offset]`. The caller is therefore
     /// responsible for configuring this separately, as this crate does not have access to
     /// arbitrary physical memory.
-    pub fn set_enabled(&mut self, enabled: bool, access: &impl ConfigRegionAccess) {
+    pub fn set_enabled(&mut self, enabled: bool, access: impl ConfigRegionAccess) {
         let mut control = unsafe { access.read(self.address.address, self.address.offset) };
         control.set_bit(31, enabled);
         unsafe {

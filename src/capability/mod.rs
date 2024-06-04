@@ -64,7 +64,7 @@ impl PciCapability {
         id: u8,
         address: PciCapabilityAddress,
         extension: u16,
-        access: &impl ConfigRegionAccess,
+        access: impl ConfigRegionAccess,
     ) -> Option<PciCapability> {
         match id {
             0x00 => None, // null capability
