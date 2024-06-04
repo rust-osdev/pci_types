@@ -288,7 +288,7 @@ impl EndpointHeader {
         /*
          * If bit 0 is `0`, the BAR is in memory. If it's `1`, it's in I/O.
          */
-        if bar.get_bit(0) == false {
+        if !bar.get_bit(0) {
             let prefetchable = bar.get_bit(3);
             let address = bar.get_bits(4..32) << 4;
 
