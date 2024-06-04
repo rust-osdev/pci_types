@@ -83,8 +83,7 @@ impl MsiCapability {
     }
 
     pub fn ctrl(&self, access: &impl ConfigRegionAccess) -> u32 {
-        let reg = unsafe { access.read(self.address.address, self.address.offset) };
-        reg
+        unsafe { access.read(self.address.address, self.address.offset) }
     }
 
     /// Is MSI capability enabled?
