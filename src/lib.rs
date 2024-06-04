@@ -162,7 +162,7 @@ impl PciHeader {
 
     pub fn command(&self, access: &impl ConfigRegionAccess) -> CommandRegister {
         let data = unsafe { access.read(self.0, 0x4).get_bits(0..16) };
-        CommandRegister::from_bits_truncate(data as u16)
+        CommandRegister::from_bits_retain(data as u16)
     }
 
     pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
@@ -170,7 +170,7 @@ impl PciHeader {
         F: Fn(CommandRegister) -> CommandRegister,
     {
         let mut data = unsafe { access.read(self.0, 0x4) };
-        let new_command = f(CommandRegister::from_bits_truncate(data.get_bits(0..16) as u16));
+        let new_command = f(CommandRegister::from_bits_retain(data.get_bits(0..16) as u16));
         data.set_bits(0..16, new_command.bits() as u32);
         unsafe {
             access.write(self.0, 0x4, data);
