@@ -167,7 +167,7 @@ impl PciHeader {
 
     pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
     where
-        F: Fn(CommandRegister) -> CommandRegister,
+        F: FnOnce(CommandRegister) -> CommandRegister,
     {
         let mut data = unsafe { access.read(self.0, 0x4) };
         let new_command = f(CommandRegister::from_bits_truncate(data.get_bits(0..16) as u16));
@@ -248,7 +248,7 @@ impl EndpointHeader {
 
     pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
     where
-        F: Fn(CommandRegister) -> CommandRegister,
+        F: FnOnce(CommandRegister) -> CommandRegister,
     {
         self.header().update_command(access, f);
     }
@@ -470,7 +470,7 @@ impl PciPciBridgeHeader {
 
     pub fn update_command<F>(&self, access: &impl ConfigRegionAccess, f: F)
     where
-        F: Fn(CommandRegister) -> CommandRegister,
+        F: FnOnce(CommandRegister) -> CommandRegister,
     {
         self.header().update_command(access, f);
     }
