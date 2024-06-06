@@ -146,6 +146,10 @@ impl PciHeader {
         PciHeader(address)
     }
 
+    pub fn address(&self) -> PciAddress {
+        self.0
+    }
+
     pub fn id(&self, access: impl ConfigRegionAccess) -> (VendorId, DeviceId) {
         let id = unsafe { access.read(self.0, 0x00) };
         (id.get_bits(0..16) as VendorId, id.get_bits(16..32) as DeviceId)
