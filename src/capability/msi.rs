@@ -45,7 +45,7 @@ pub enum TriggerMode {
     LevelDeassert = 0b10,
 }
 
-#[derive(Debug, Clone)]
+#[derive(Debug, Clone, Copy)]
 pub struct MsiCapability {
     address: PciCapabilityAddress,
     per_vector_masking: bool,

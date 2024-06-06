@@ -8,7 +8,7 @@ mod msix;
 pub use msi::{MsiCapability, MultipleMessageSupport, TriggerMode};
 pub use msix::MsixCapability;
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 pub struct PciCapabilityAddress {
     pub address: PciAddress,
     pub offset: u16,
@@ -21,7 +21,7 @@ impl core::fmt::Debug for PciCapabilityAddress {
 }
 
 /// PCI capabilities
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub enum PciCapability {
     /// Power management capability, Cap ID = `0x01`
     PowerManagement(PciCapabilityAddress),
