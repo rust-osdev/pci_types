@@ -1,7 +1,7 @@
 use bit_field::BitField;
 use core::{
     convert::TryFrom,
-    fmt::{Debug, Formatter},
+    fmt::{self, Debug, Formatter},
 };
 
 /// Slowest time that a device will assert DEVSEL# for any bus command except Configuration Space
@@ -13,15 +13,26 @@ pub enum DevselTiming {
     Slow = 0x2,
 }
 
+#[derive(Debug)]
+pub struct TryFromDevselTimingError {
+    number: u8,
+}
+
+impl fmt::Display for TryFromDevselTimingError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "No discriminant in `DevselTiming` matches the value `{}`", self.number)
+    }
+}
+
 impl TryFrom<u8> for DevselTiming {
-    type Error = ();
+    type Error = TryFromDevselTimingError;
 
     fn try_from(value: u8) -> Result<Self, Self::Error> {
         match value {
             0x0 => Ok(DevselTiming::Fast),
             0x1 => Ok(DevselTiming::Medium),
             0x2 => Ok(DevselTiming::Slow),
-            _ => Err(()),
+            number => Err(TryFromDevselTimingError { number }),
         }
     }
 }
@@ -64,7 +75,7 @@ impl StatusRegister {
     /// Configuration Space read and writes.
     ///
     /// For PCIe always set to `Fast`
-    pub fn devsel_timing(&self) -> Result<DevselTiming, ()> {
+    pub fn devsel_timing(&self) -> Result<DevselTiming, TryFromDevselTimingError> {
         let bits = self.0.get_bits(9..11);
         DevselTiming::try_from(bits as u8)
     }
