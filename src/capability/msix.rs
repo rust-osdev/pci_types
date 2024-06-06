@@ -2,7 +2,7 @@ use super::PciCapabilityAddress;
 use crate::ConfigRegionAccess;
 use bit_field::BitField;
 
-#[derive(Clone, Debug)]
+#[derive(Clone, Copy, Debug)]
 pub struct MsixCapability {
     address: PciCapabilityAddress,
     table_size: u16,

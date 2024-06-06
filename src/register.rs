@@ -6,7 +6,7 @@ use core::{
 
 /// Slowest time that a device will assert DEVSEL# for any bus command except Configuration Space
 /// read and writes
-#[derive(Clone, Debug, Eq, PartialEq)]
+#[derive(Clone, Copy, Debug, Eq, PartialEq)]
 pub enum DevselTiming {
     Fast = 0x0,
     Medium = 0x1,
