@@ -435,7 +435,7 @@ impl EndpointHeader {
         (data.get_bits(8..16) as u8, data.get_bits(0..8) as u8)
     }
 
-    pub fn update_interrupt<F>(&mut self, access: &impl ConfigRegionAccess, f: F)
+    pub fn update_interrupt<F>(&mut self, access: impl ConfigRegionAccess, f: F)
     where
         F: FnOnce((InterruptPin, InterruptLine)) -> (InterruptPin, InterruptLine),
     {
