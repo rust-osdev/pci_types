@@ -39,6 +39,18 @@ impl MsixCapability {
         }
     }
 
+    /// Enable/disable masking of all interrupts for this PCI function.
+    ///
+    /// Individual interrupt sources can be masked using mask field of the corresponding entry in
+    /// the MSI-X table.
+    pub fn set_function_mask(&mut self, mask: bool, access: impl ConfigRegionAccess) {
+        let mut control = unsafe { access.read(self.address.address, self.address.offset) };
+        control.set_bit(30, mask);
+        unsafe {
+            access.write(self.address.address, self.address.offset, control);
+        }
+    }
+
     /// The index of the BAR that contains the MSI-X table.
     pub fn table_bar(&self) -> u8 {
         self.table.get_bits(0..3) as u8
