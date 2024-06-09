@@ -47,7 +47,7 @@ pub enum TriggerMode {
 
 #[derive(Debug, Clone, Copy)]
 pub struct MsiCapability {
-    address: PciCapabilityAddress,
+    pub(super) address: PciCapabilityAddress,
     per_vector_masking: bool,
     is_64bit: bool,
     multiple_message_capable: MultipleMessageSupport,

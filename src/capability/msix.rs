@@ -4,7 +4,7 @@ use bit_field::BitField;
 
 #[derive(Clone, Copy, Debug)]
 pub struct MsixCapability {
-    address: PciCapabilityAddress,
+    pub(super) address: PciCapabilityAddress,
     table_size: u16,
     /// Table BAR in bits 0..3 and offset into that BAR in bits 3..31
     table: u32,

@@ -87,6 +87,28 @@ impl PciCapability {
             _ => Some(PciCapability::Unknown { address, id }),
         }
     }
+
+    pub fn address(&self) -> PciCapabilityAddress {
+        match *self {
+            PciCapability::PowerManagement(address) => address,
+            PciCapability::AcceleratedGraphicsPort(address) => address,
+            PciCapability::VitalProductData(address) => address,
+            PciCapability::SlotIdentification(address) => address,
+            PciCapability::Msi(msi_cap) => msi_cap.address,
+            PciCapability::CompactPCIHotswap(address) => address,
+            PciCapability::PciX(address) => address,
+            PciCapability::HyperTransport(address) => address,
+            PciCapability::Vendor(address) => address,
+            PciCapability::DebugPort(address) => address,
+            PciCapability::CompactPCICentralResourceControl(address) => address,
+            PciCapability::PciHotPlugControl(address) => address,
+            PciCapability::BridgeSubsystemVendorId(address) => address,
+            PciCapability::AGP3(address) => address,
+            PciCapability::PciExpress(address) => address,
+            PciCapability::MsiX(msix_cap) => msix_cap.address,
+            PciCapability::Unknown { address, id: _ } => address,
+        }
+    }
 }
 
 pub struct CapabilityIterator<T: ConfigRegionAccess> {
