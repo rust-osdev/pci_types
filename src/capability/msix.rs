@@ -39,6 +39,11 @@ impl MsixCapability {
         }
     }
 
+    pub fn enabled(&self, access: impl ConfigRegionAccess) -> bool {
+        let control = unsafe { access.read(self.address.address, self.address.offset) };
+        control.get_bit(31)
+    }
+
     /// Enable/disable masking of all interrupts for this PCI function.
     ///
     /// Individual interrupt sources can be masked using mask field of the corresponding entry in
@@ -49,6 +54,11 @@ impl MsixCapability {
         unsafe {
             access.write(self.address.address, self.address.offset, control);
         }
+    }
+
+    pub fn function_mask(&self, access: impl ConfigRegionAccess) -> bool {
+        let control = unsafe { access.read(self.address.address, self.address.offset) };
+        control.get_bit(30)
     }
 
     /// The index of the BAR that contains the MSI-X table.
