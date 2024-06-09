@@ -75,8 +75,6 @@ pub type InterruptPin = u8;
 
 // TODO: documentation
 pub trait ConfigRegionAccess {
-    fn function_exists(&self, address: PciAddress) -> bool;
-
     /// Performs a PCI read at `address` with `offset`.
     ///
     /// # Safety
@@ -93,11 +91,6 @@ pub trait ConfigRegionAccess {
 }
 
 impl<T: ConfigRegionAccess + ?Sized> ConfigRegionAccess for &T {
-    #[inline]
-    fn function_exists(&self, address: PciAddress) -> bool {
-        (**self).function_exists(address)
-    }
-
     #[inline]
     unsafe fn read(&self, address: PciAddress, offset: u16) -> u32 {
         (**self).read(address, offset)
