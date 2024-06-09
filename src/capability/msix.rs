@@ -28,7 +28,7 @@ impl MsixCapability {
     ///
     /// Unlike with MSI, the MSI message data and delivery address is not contained within the
     /// capability, but instead in system memory, and pointed to by the BAR specified by
-    /// `[MsixCapability::table_bar]` and `[MsixCapability::table_offset]`. The caller is therefore
+    /// [`MsixCapability::table_bar`] and [`MsixCapability::table_offset`]. The caller is therefore
     /// responsible for configuring this separately, as this crate does not have access to
     /// arbitrary physical memory.
     pub fn set_enabled(&mut self, enabled: bool, access: impl ConfigRegionAccess) {
