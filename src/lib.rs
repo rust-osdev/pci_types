@@ -549,6 +549,28 @@ pub enum Bar {
     Io { port: u32 },
 }
 
+impl Bar {
+    /// Return the IO port of this BAR or panic if not an IO BAR.
+    pub fn unwrap_io(self) -> u32 {
+        match self {
+            Bar::Io { port } => port,
+            Bar::Memory32 { .. } | Bar::Memory64 { .. } => panic!("expected IO BAR, found memory BAR"),
+        }
+    }
+
+    /// Return the address and size of this BAR or panic if not a memory BAR.
+    pub fn unwrap_mem(self) -> (usize, usize) {
+        match self {
+            Bar::Memory32 { address, size, prefetchable: _ } => (address as usize, size as usize),
+            Bar::Memory64 { address, size, prefetchable: _ } => (
+                address.try_into().expect("conversion from 64bit BAR to usize failed"),
+                size.try_into().expect("conversion from 64bit BAR to usize failed"),
+            ),
+            Bar::Io { .. } => panic!("expected memory BAR, found IO BAR"),
+        }
+    }
+}
+
 #[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum BarWriteError {
     NoSuchBar,
