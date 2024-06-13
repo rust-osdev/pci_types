@@ -198,7 +198,7 @@ impl PciHeader {
         CommandRegister::from_bits_retain(data as u16)
     }
 
-    pub fn update_command<F>(&self, access: impl ConfigRegionAccess, f: F)
+    pub fn update_command<F>(&mut self, access: impl ConfigRegionAccess, f: F)
     where
         F: FnOnce(CommandRegister) -> CommandRegister,
     {
@@ -279,7 +279,7 @@ impl EndpointHeader {
         self.header().command(access)
     }
 
-    pub fn update_command<F>(&self, access: impl ConfigRegionAccess, f: F)
+    pub fn update_command<F>(&mut self, access: impl ConfigRegionAccess, f: F)
     where
         F: FnOnce(CommandRegister) -> CommandRegister,
     {
@@ -517,7 +517,7 @@ impl PciPciBridgeHeader {
         self.header().command(access)
     }
 
-    pub fn update_command<F>(&self, access: impl ConfigRegionAccess, f: F)
+    pub fn update_command<F>(&mut self, access: impl ConfigRegionAccess, f: F)
     where
         F: FnOnce(CommandRegister) -> CommandRegister,
     {
