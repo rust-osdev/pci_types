@@ -78,7 +78,7 @@ impl MsiCapability {
 
     /// How many interrupts this device has?
     #[inline]
-    pub fn get_multiple_message_capable(&self) -> MultipleMessageSupport {
+    pub fn multiple_message_capable(&self) -> MultipleMessageSupport {
         self.multiple_message_capable
     }
 
@@ -108,7 +108,7 @@ impl MsiCapability {
     }
 
     /// Return how many interrupts the device is using
-    pub fn get_multiple_message_enable(&self, access: impl ConfigRegionAccess) -> MultipleMessageSupport {
+    pub fn multiple_message_enable(&self, access: impl ConfigRegionAccess) -> MultipleMessageSupport {
         let reg = unsafe { access.read(self.address.address, self.address.offset) };
         MultipleMessageSupport::try_from(reg.get_bits(4..7) as u8).unwrap_or(MultipleMessageSupport::Int1)
     }
@@ -145,7 +145,7 @@ impl MsiCapability {
     /// # Note
     /// Only supported on when device supports 64-bit addressing and per-vector masking. Otherwise
     /// returns `0`
-    pub fn get_message_mask(&self, access: impl ConfigRegionAccess) -> u32 {
+    pub fn message_mask(&self, access: impl ConfigRegionAccess) -> u32 {
         if self.is_64bit && self.per_vector_masking {
             unsafe { access.read(self.address.address, self.address.offset + 0x10) }
         } else {
@@ -158,7 +158,7 @@ impl MsiCapability {
     /// # Note
     /// Only supported on when device supports 64-bit addressing and per-vector masking. Otherwise
     /// will do nothing
-    pub fn set_message_mask(&self, access: impl ConfigRegionAccess, mask: u32) {
+    pub fn set_message_mask(&self, mask: u32, access: impl ConfigRegionAccess) {
         if self.is_64bit && self.per_vector_masking {
             unsafe { access.write(self.address.address, self.address.offset + 0x10, mask) }
         }
@@ -168,7 +168,7 @@ impl MsiCapability {
     ///
     /// # Note
     /// Only supported on when device supports 64-bit addressing. Otherwise will return `0`
-    pub fn get_pending(&self, access: impl ConfigRegionAccess) -> u32 {
+    pub fn is_pending(&self, access: impl ConfigRegionAccess) -> u32 {
         if self.is_64bit {
             unsafe { access.read(self.address.address, self.address.offset + 0x14) }
         } else {
