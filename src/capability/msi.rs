@@ -113,22 +113,27 @@ impl MsiCapability {
         MultipleMessageSupport::try_from(reg.get_bits(4..7) as u8).unwrap_or(MultipleMessageSupport::Int1)
     }
 
-    /// Set where the interrupts will be sent to
+    /// Set the memory address that will be written to when the interrupt fires.
     ///
     /// # Arguments
-    /// * `address` - Target Local APIC address (if not changed, can be calculated with `0xFEE00000 | (processor << 12)`)
+    /// * `address` - Target Local APIC address (if not changed, can be calculated with `0xfee00000 | (processor << 12)`)
     /// * `vector` - Which interrupt vector should be triggered on LAPIC
     /// * `trigger_mode` - When interrupt should be triggered
     /// * `access` - PCI Configuration Space accessor
     pub fn set_message_info(
         &self,
-        address: u32,
+        address: u64,
         vector: u8,
         trigger_mode: TriggerMode,
         access: impl ConfigRegionAccess,
     ) {
-        unsafe { access.write(self.address.address, self.address.offset + 0x4, address) }
-        let data_offset = if self.is_64bit { 0xC } else { 0x8 };
+        unsafe {
+            access.write(self.address.address, self.address.offset + 0x04, address.get_bits(0..32) as u32);
+            if self.is_64bit {
+                access.write(self.address.address, self.address.offset + 0x08, address.get_bits(32..64) as u32);
+            }
+        }
+        let data_offset = if self.is_64bit { 0x0c } else { 0x08 };
         let mut data = unsafe { access.read(self.address.address, self.address.offset + data_offset) };
         data.set_bits(0..8, vector as u32);
         data.set_bits(14..16, trigger_mode as u32);
