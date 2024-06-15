@@ -113,20 +113,9 @@ impl MsiCapability {
         MultipleMessageSupport::try_from(reg.get_bits(4..7) as u8).unwrap_or(MultipleMessageSupport::Int1)
     }
 
-    /// Set the memory address that will be written to when the interrupt fires.
-    ///
-    /// # Arguments
-    /// * `address` - Target Local APIC address (if not changed, can be calculated with `0xfee00000 | (processor << 12)`)
-    /// * `vector` - Which interrupt vector should be triggered on LAPIC
-    /// * `trigger_mode` - When interrupt should be triggered
-    /// * `access` - PCI Configuration Space accessor
-    pub fn set_message_info(
-        &self,
-        address: u64,
-        vector: u8,
-        trigger_mode: TriggerMode,
-        access: impl ConfigRegionAccess,
-    ) {
+    /// Set the memory address that will be written to when the interrupt fires, and the data that
+    /// will be written to it.
+    pub fn set_message_info(&self, address: u64, data: u32, access: impl ConfigRegionAccess) {
         unsafe {
             access.write(self.address.address, self.address.offset + 0x04, address.get_bits(0..32) as u32);
             if self.is_64bit {
@@ -134,10 +123,30 @@ impl MsiCapability {
             }
         }
         let data_offset = if self.is_64bit { 0x0c } else { 0x08 };
-        let mut data = unsafe { access.read(self.address.address, self.address.offset + data_offset) };
+        unsafe {
+            access.write(self.address.address, self.address.offset + data_offset, data);
+        }
+    }
+
+    /// Set the memory address that will be written to when the interrupt fires, and the data that
+    /// will be written to it, specialised for the message format the LAPIC expects.
+    ///
+    /// # Arguments
+    /// * `address` - Target Local APIC address (if not changed, can be calculated with `0xfee00000 | (processor << 12)`)
+    /// * `vector` - Which interrupt vector should be triggered on LAPIC
+    /// * `trigger_mode` - When interrupt should be triggered
+    /// * `access` - PCI Configuration Space accessor
+    pub fn set_message_info_lapic(
+        &self,
+        address: u64,
+        vector: u8,
+        trigger_mode: TriggerMode,
+        access: impl ConfigRegionAccess,
+    ) {
+        let mut data = 0;
         data.set_bits(0..8, vector as u32);
         data.set_bits(14..16, trigger_mode as u32);
-        unsafe { access.write(self.address.address, self.address.offset + data_offset, data) }
+        self.set_message_info(address, data, access);
     }
 
     /// Get interrupt mask
