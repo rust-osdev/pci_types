@@ -52,7 +52,7 @@ impl PciAddress {
 
 impl fmt::Display for PciAddress {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{:02x}-{:02x}:{:02x}.{}", self.segment(), self.bus(), self.device(), self.function())
+        write!(f, "{:04x}:{:02x}:{:02x}.{}", self.segment(), self.bus(), self.device(), self.function())
     }
 }
 
