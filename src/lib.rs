@@ -531,6 +531,30 @@ impl PciPciBridgeHeader {
         let data = unsafe { access.read(self.0, 0x18).get_bits(16..24) };
         data as u8
     }
+
+    pub fn update_bus_number<F>(&self, access: impl ConfigRegionAccess, f: F)
+    where
+        F: FnOnce(BusNumber) -> BusNumber,
+    {
+        let mut data = unsafe { access.read(self.0, 0x18) };
+        let new_bus = f(BusNumber {
+            primary: data.get_bits(0..8) as u8,
+            secondary: data.get_bits(8..16) as u8,
+            subordinate: data.get_bits(16..24) as u8,
+        });
+        data.set_bits(16..24, new_bus.subordinate.into());
+        data.set_bits(8..16, new_bus.secondary.into());
+        data.set_bits(0..8, new_bus.primary.into());
+        unsafe {
+            access.write(self.0, 0x18, data);
+        }
+    }
+}
+
+pub struct BusNumber {
+    pub primary: u8,
+    pub secondary: u8,
+    pub subordinate: u8,
 }
 
 pub const MAX_BARS: usize = 6;
