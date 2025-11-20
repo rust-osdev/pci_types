@@ -321,7 +321,7 @@ impl EndpointHeader {
             match bar.get_bits(1..3) {
                 0b00 => {
                     let size = unsafe {
-                        access.write(self.0, offset, 0xfffffff0);
+                        access.write(self.0, offset, 0xffffffff);
                         let mut readback = access.read(self.0, offset);
                         access.write(self.0, offset, address);
 
@@ -349,7 +349,7 @@ impl EndpointHeader {
                     let address_upper = unsafe { access.read(self.0, offset + 4) };
 
                     let size = unsafe {
-                        access.write(self.0, offset, 0xfffffff0);
+                        access.write(self.0, offset, 0xffffffff);
                         access.write(self.0, offset + 4, 0xffffffff);
                         let mut readback_low = access.read(self.0, offset);
                         let readback_high = access.read(self.0, offset + 4);
